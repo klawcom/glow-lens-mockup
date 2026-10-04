@@ -18,6 +18,11 @@ import { getDeviceId } from "@/lib/device";
 import { categoryImage } from "@/data/category-images";
 import { useFavorites, type FavoriteCategory } from "@/lib/favorites";
 import { CategoryPickerModal } from "@/components/CategoryPickerModal";
+import {
+  getAffiliateLinks,
+  buildAffiliateUrl,
+  DEFAULT_AFFILIATE_STORES,
+} from "@/lib/affiliates.functions";
 
 export const Route = createFileRoute("/ficha")({
   validateSearch: (s: Record<string, unknown>): { nome: string } => ({
@@ -44,8 +49,15 @@ function FichaPage() {
   const { nome } = Route.useSearch();
   const router = useRouter();
   const fetchFicha = useServerFn(getFicha);
+  const fetchAffiliates = useServerFn(getAffiliateLinks);
   const { isFavorite, addFavorite, removeFavorite, getCategory } = useFavorites();
   const [pickerOpen, setPickerOpen] = useState(false);
+
+  const affQuery = useQuery({
+    queryKey: ["affiliateLinks"],
+    staleTime: 1000 * 60 * 10,
+    queryFn: () => fetchAffiliates(),
+  });
 
   const q = useQuery({
     queryKey: ["ficha", nome],
@@ -245,41 +257,39 @@ function FichaPage() {
           <span className="text-[11px] text-muted-foreground">Busca nos marketplaces</span>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-          {[
-            {
-              name: "Amazon.com.br",
-              url: `https://www.amazon.com.br/s?k=${encodeURIComponent(`${f.marca} ${f.nome}`.trim())}`,
-              tag: "Amazon",
-            },
-            {
-              name: "Mercado Livre",
-              url: `https://lista.mercadolivre.com.br/${encodeURIComponent(`${f.marca} ${f.nome}`.trim())}`,
-              tag: "Mercado Livre",
-            },
-            {
-              name: "AliExpress",
-              url: `https://www.aliexpress.com/wholesale?SearchText=${encodeURIComponent(`${f.marca} ${f.nome}`.trim())}`,
-              tag: "AliExpress",
-            },
-            {
-              name: "Shopee",
-              url: `https://shopee.com.br/search?keyword=${encodeURIComponent(`${f.marca} ${f.nome}`.trim())}`,
-              tag: "Shopee",
-            },
-          ].map((store) => (
-            <a
-              key={store.name}
-              href={store.url}
-              target="_blank"
-              rel="sponsored noopener"
-              className="flex items-center justify-between rounded-2xl border border-border bg-card p-3.5 text-xs font-bold text-foreground shadow-xs transition hover:border-primary/50 hover:bg-muted/60 active:scale-[0.98]"
-            >
-              <span>{store.name}</span>
-              <ExternalLink className="h-4 w-4 text-primary shrink-0" />
-            </a>
-          ))}
-        </div>
+        {(() => {
+          const stores = affQuery.data?.stores || DEFAULT_AFFILIATE_STORES;
+          const activeStores = stores.filter((s) => s.ativo !== false);
+          const searchTerm = `${f.marca} ${f.nome}`.trim();
+
+          if (activeStores.length === 0) {
+            return (
+              <p className="text-xs text-muted-foreground text-center py-2">
+                Nenhuma loja de compra ativa no momento.
+              </p>
+            );
+          }
+
+          return (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+              {activeStores.map((store) => {
+                const finalUrl = buildAffiliateUrl(store.modelo, store.loja, searchTerm);
+                return (
+                  <a
+                    key={store.loja}
+                    href={finalUrl}
+                    target="_blank"
+                    rel="sponsored noopener"
+                    className="flex items-center justify-between rounded-2xl border border-border bg-card p-3.5 text-xs font-bold text-foreground shadow-xs transition hover:border-primary/50 hover:bg-muted/60 active:scale-[0.98]"
+                  >
+                    <span>{store.loja}</span>
+                    <ExternalLink className="h-4 w-4 text-primary shrink-0" />
+                  </a>
+                );
+              })}
+            </div>
+          );
+        })()}
 
         <p className="mt-3 text-center text-[11px] text-muted-foreground">
           Podemos receber comissão por compras feitas pelos links.

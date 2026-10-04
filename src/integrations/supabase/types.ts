@@ -92,6 +92,27 @@ export type Database = {
         };
         Relationships: [];
       };
+      links_afiliados: {
+        Row: {
+          ativo: boolean;
+          atualizado_em: string;
+          loja: string;
+          modelo: string;
+        };
+        Insert: {
+          ativo?: boolean;
+          atualizado_em?: string;
+          loja: string;
+          modelo: string;
+        };
+        Update: {
+          ativo?: boolean;
+          atualizado_em?: string;
+          loja?: string;
+          modelo?: string;
+        };
+        Relationships: [];
+      };
       produtos_em_alta: {
         Row: {
           atualizado_em: string;

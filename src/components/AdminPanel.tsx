@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link } from "@tanstack/react-router";
+import { useServerFn } from "@tanstack/react-start";
 import {
   ShieldCheck,
   Mail,
@@ -13,11 +14,24 @@ import {
   AlertCircle,
   Copy,
   Info,
+  Sliders,
+  ExternalLink,
+  RotateCcw,
+  Save,
+  Loader2,
+  ShoppingBag,
 } from "lucide-react";
 import type { Session } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 import { PageHeader } from "@/components/PageHeader";
 import { APP_CONFIG } from "@/config/app";
+import {
+  getAffiliateLinks,
+  saveAffiliateLinks,
+  DEFAULT_AFFILIATE_STORES,
+  buildAffiliateUrl,
+  type AffiliateStoreConfig,
+} from "@/lib/affiliates.functions";
 
 function GoogleIcon({ className = "h-5 w-5" }: { className?: string }) {
   return (
@@ -288,6 +302,151 @@ export function AdminPanel({ currentPath = "/adm" }: { currentPath?: string }) {
   const isOwner =
     session?.user?.email?.toLowerCase().trim() === APP_CONFIG.ownerEmail.toLowerCase().trim();
 
+  // Abas do administrador (Ajustes visível apenas para o dono)
+  const [adminTab, setAdminTab] = useState<"indicadores" | "ajustes">(() => {
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get("tab") === "ajustes" || window.location.hash === "#ajustes") {
+        return "ajustes";
+      }
+    }
+    return "indicadores";
+  });
+
+  // Estado dos links de afiliados (Ajustes)
+  const [stores, setStores] = useState<AffiliateStoreConfig[]>(DEFAULT_AFFILIATE_STORES);
+  const [loadingStores, setLoadingStores] = useState(false);
+  const [savingStores, setSavingStores] = useState(false);
+
+  const fetchAffiliates = useServerFn(getAffiliateLinks);
+  const saveAffiliates = useServerFn(saveAffiliateLinks);
+
+  // Carregar lojas de afiliados quando logado como dono
+  const loadAffiliateStores = async () => {
+    setLoadingStores(true);
+    try {
+      const res = await fetchAffiliates();
+      if (res?.stores && res.stores.length > 0) {
+        setStores(res.stores);
+      }
+    } catch (err) {
+      console.warn("Erro ao carregar lojas de afiliados:", err);
+    } finally {
+      setLoadingStores(false);
+    }
+  };
+
+  useEffect(() => {
+    if (session?.user && isOwner) {
+      loadAffiliateStores();
+    }
+  }, [session, isOwner]);
+
+  const handleStoreModelChange = (loja: string, newModelo: string) => {
+    setStores((prev) => prev.map((s) => (s.loja === loja ? { ...s, modelo: newModelo } : s)));
+  };
+
+  const handleStoreToggle = (loja: string, ativo: boolean) => {
+    setStores((prev) => prev.map((s) => (s.loja === loja ? { ...s, ativo } : s)));
+  };
+
+  const handleStoreReset = (loja: string) => {
+    const defaultStore = DEFAULT_AFFILIATE_STORES.find((d) => d.loja === loja);
+    if (!defaultStore) return;
+    setStores((prev) =>
+      prev.map((s) => (s.loja === loja ? { ...s, modelo: defaultStore.modelo, ativo: true } : s)),
+    );
+    setMsg({
+      type: "info",
+      text: `Modelo padrão da loja ${loja} restaurado. Clique em "Salvar Ajustes" para confirmar.`,
+    });
+  };
+
+  const handleTestLink = (store: AffiliateStoreConfig) => {
+    const model = store.modelo.trim();
+    if (!model.toLowerCase().startsWith("https://")) {
+      setMsg({
+        type: "error",
+        text: `Link de ${store.loja} inválido: deve começar com https://`,
+      });
+      return;
+    }
+    if (!model.includes("{busca}")) {
+      setMsg({
+        type: "error",
+        text: `Link de ${store.loja} inválido: deve conter {busca} onde o produto será inserido.`,
+      });
+      return;
+    }
+
+    const testTerm = "protetor solar facial";
+    const testUrl = buildAffiliateUrl(store.modelo, store.loja, testTerm);
+    if (typeof window !== "undefined") {
+      window.open(testUrl, "_blank", "noopener,noreferrer");
+    }
+    setMsg({
+      type: "info",
+      text: `Testando link de ${store.loja} em nova aba com o termo "${testTerm}".`,
+    });
+  };
+
+  const handleSaveStores = async () => {
+    setSavingStores(true);
+    setMsg(null);
+
+    // Validação no cliente antes do envio: aceitar apenas https:// e deve conter {busca}
+    for (const store of stores) {
+      const model = store.modelo.trim();
+      if (!model.toLowerCase().startsWith("https://")) {
+        setMsg({
+          type: "error",
+          text: `Erro na loja ${store.loja}: o modelo deve começar obrigatoriamente com https://`,
+        });
+        setSavingStores(false);
+        return;
+      }
+      if (!model.includes("{busca}")) {
+        setMsg({
+          type: "error",
+          text: `Erro na loja ${store.loja}: o modelo deve conter a tag {busca} no endereço.`,
+        });
+        setSavingStores(false);
+        return;
+      }
+    }
+
+    try {
+      const res = await saveAffiliates({
+        data: {
+          stores: stores.map((s) => ({
+            loja: s.loja,
+            modelo: s.modelo.trim(),
+            ativo: s.ativo,
+          })),
+        },
+      });
+
+      if (res.ok) {
+        setMsg({
+          type: "success",
+          text: res.message || "Modelos de links de afiliados salvos com sucesso!",
+        });
+      } else {
+        setMsg({
+          type: "error",
+          text: res.message || "Erro ao salvar os modelos de afiliados.",
+        });
+      }
+    } catch (e: unknown) {
+      setMsg({
+        type: "error",
+        text: (e as Error)?.message || "Não foi possível salvar os ajustes de afiliados.",
+      });
+    } finally {
+      setSavingStores(false);
+    }
+  };
+
   const inputClass =
     "w-full rounded-full border-2 border-border bg-muted px-4 py-3 text-sm outline-none focus:border-primary text-foreground transition";
   const btnPrimary =
@@ -487,56 +646,244 @@ export function AdminPanel({ currentPath = "/adm" }: { currentPath?: string }) {
 
                 <button
                   type="button"
-                  className="inline-flex items-center justify-center gap-2 rounded-full border border-border bg-card px-4 py-2 text-xs font-semibold text-foreground hover:bg-muted self-start"
+                  className="inline-flex items-center justify-center gap-2 rounded-full border border-border bg-card px-4 py-2 text-xs font-semibold text-foreground hover:bg-muted self-start cursor-pointer"
                   onClick={() => supabase.auth.signOut()}
                 >
                   <LogOut className="h-3.5 w-3.5" /> Sair
                 </button>
               </div>
 
-              {/* Métricas do Sistema */}
-              <div>
-                <h3 className="text-sm font-bold text-foreground mb-3 flex items-center gap-1.5">
-                  <Database className="h-4 w-4 text-link" /> Indicadores do Sistema
-                </h3>
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="rounded-2xl bg-muted/60 p-3.5 border border-border">
-                    <div className="flex items-center gap-2 text-link mb-1">
-                      <Cpu className="h-4 w-4" />
-                      <span className="text-xs font-bold">Fichas em Cache</span>
-                    </div>
-                    <div className="text-2xl font-extrabold text-foreground">
-                      {loadingData ? "..." : fichasCount}
-                    </div>
-                    <p className="text-[11px] text-muted-foreground">Produtos consultados</p>
-                  </div>
-
-                  <div className="rounded-2xl bg-muted/60 p-3.5 border border-border">
-                    <div className="flex items-center gap-2 text-primary mb-1">
-                      <CheckCircle2 className="h-4 w-4" />
-                      <span className="text-xs font-bold">Consultas IA</span>
-                    </div>
-                    <div className="text-2xl font-extrabold text-foreground">
-                      {loadingData ? "..." : aiUsageCount}
-                    </div>
-                    <p className="text-[11px] text-muted-foreground">Análises realizadas</p>
-                  </div>
-
-                  <div className="rounded-2xl bg-muted/60 p-3.5 border border-border col-span-2">
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs font-semibold text-muted-foreground">
-                        Modo de Operação:
-                      </span>
-                      <span className="inline-flex items-center gap-1 text-xs font-bold text-success-foreground bg-success/20 px-2 py-0.5 rounded-full">
-                        <CheckCircle2 className="h-3 w-3" /> Busca Pura & Escaneamento
-                      </span>
-                    </div>
-                    <p className="text-[10px] text-muted-foreground mt-1">
-                      App focado em busca rápida, leitura de código de barras e IA sob demanda.
-                    </p>
-                  </div>
+              {/* Abas de Navegação (Apenas visíveis para o dono) */}
+              {isOwner && (
+                <div className="flex rounded-2xl bg-muted/80 p-1 border border-border">
+                  <button
+                    type="button"
+                    onClick={() => setAdminTab("indicadores")}
+                    className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs font-bold transition cursor-pointer ${
+                      adminTab === "indicadores"
+                        ? "bg-card text-foreground shadow-xs border border-border"
+                        : "text-muted-foreground hover:text-foreground"
+                    }`}
+                  >
+                    <Database className="h-3.5 w-3.5" />
+                    <span>Indicadores</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setAdminTab("ajustes")}
+                    className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs font-bold transition cursor-pointer ${
+                      adminTab === "ajustes"
+                        ? "bg-card text-foreground shadow-xs border border-border"
+                        : "text-muted-foreground hover:text-foreground"
+                    }`}
+                  >
+                    <Sliders className="h-3.5 w-3.5 text-primary" />
+                    <span>Ajustes</span>
+                  </button>
                 </div>
-              </div>
+              )}
+
+              {/* ABA 1: INDICADORES DO SISTEMA */}
+              {adminTab === "indicadores" && (
+                <div className="space-y-4">
+                  <h3 className="text-sm font-bold text-foreground flex items-center gap-1.5">
+                    <Database className="h-4 w-4 text-link" /> Indicadores do Sistema
+                  </h3>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="rounded-2xl bg-muted/60 p-3.5 border border-border">
+                      <div className="flex items-center gap-2 text-link mb-1">
+                        <Cpu className="h-4 w-4" />
+                        <span className="text-xs font-bold">Fichas em Cache</span>
+                      </div>
+                      <div className="text-2xl font-extrabold text-foreground">
+                        {loadingData ? "..." : fichasCount}
+                      </div>
+                      <p className="text-[11px] text-muted-foreground">Produtos consultados</p>
+                    </div>
+
+                    <div className="rounded-2xl bg-muted/60 p-3.5 border border-border">
+                      <div className="flex items-center gap-2 text-primary mb-1">
+                        <CheckCircle2 className="h-4 w-4" />
+                        <span className="text-xs font-bold">Consultas IA</span>
+                      </div>
+                      <div className="text-2xl font-extrabold text-foreground">
+                        {loadingData ? "..." : aiUsageCount}
+                      </div>
+                      <p className="text-[11px] text-muted-foreground">Análises realizadas</p>
+                    </div>
+
+                    <div className="rounded-2xl bg-muted/60 p-3.5 border border-border col-span-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-semibold text-muted-foreground">
+                          Modo de Operação:
+                        </span>
+                        <span className="inline-flex items-center gap-1 text-xs font-bold text-success-foreground bg-success/20 px-2 py-0.5 rounded-full">
+                          <CheckCircle2 className="h-3 w-3" /> Busca Pura & Escaneamento
+                        </span>
+                      </div>
+                      <p className="text-[10px] text-muted-foreground mt-1">
+                        App focado em busca rápida, leitura de código de barras e IA sob demanda.
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Atalho para os Ajustes exclusivo para o dono */}
+                  {isOwner && (
+                    <button
+                      type="button"
+                      onClick={() => setAdminTab("ajustes")}
+                      className="w-full flex items-center justify-between rounded-2xl border border-primary/30 bg-primary/5 p-3.5 text-xs font-bold text-primary hover:bg-primary/10 transition cursor-pointer"
+                    >
+                      <span className="flex items-center gap-2">
+                        <Sliders className="h-4 w-4" /> Configurar modelos de links de afiliados
+                      </span>
+                      <span>Abrir Ajustes →</span>
+                    </button>
+                  )}
+                </div>
+              )}
+
+              {/* ABA 2: AJUSTES DE AFILIADOS (EXCLUSIVO PARA O DONO) */}
+              {adminTab === "ajustes" && isOwner && (
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between pb-1">
+                    <div>
+                      <h3 className="text-sm font-bold text-foreground flex items-center gap-1.5">
+                        <Sliders className="h-4 w-4 text-primary" /> Ajustes de Afiliados
+                      </h3>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        Personalize os modelos de links para os botões &ldquo;Onde comprar&rdquo;.
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleSaveStores}
+                      disabled={savingStores}
+                      className="inline-flex items-center gap-1.5 rounded-full bg-primary px-4 py-2 text-xs font-bold text-primary-foreground shadow-soft hover:opacity-95 transition disabled:opacity-50 cursor-pointer"
+                    >
+                      {savingStores ? (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      ) : (
+                        <Save className="h-3.5 w-3.5" />
+                      )}
+                      <span>Salvar Ajustes</span>
+                    </button>
+                  </div>
+
+                  <div className="rounded-2xl bg-muted/40 p-3 text-[11px] text-muted-foreground border border-border flex items-start gap-2">
+                    <Info className="h-4 w-4 text-primary shrink-0 mt-0.5" />
+                    <span>
+                      Use{" "}
+                      <code className="rounded bg-muted px-1.5 py-0.5 font-mono font-bold text-foreground">
+                        {"{busca}"}
+                      </code>{" "}
+                      no local onde o nome e a marca do produto serão inseridos. Exemplo:{" "}
+                      <code className="break-all font-mono text-primary">
+                        https://www.amazon.com.br/s?k={"{"}busca{"}"}&amp;tag=SEUCODIGO
+                      </code>
+                    </span>
+                  </div>
+
+                  {loadingStores ? (
+                    <div className="flex items-center justify-center py-8 text-muted-foreground">
+                      <Loader2 className="h-6 w-6 animate-spin text-primary" />
+                    </div>
+                  ) : (
+                    <div className="space-y-3.5">
+                      {stores.map((store) => (
+                        <div
+                          key={store.loja}
+                          className={`rounded-2xl border p-4 transition ${
+                            store.ativo
+                              ? "bg-card border-border shadow-xs"
+                              : "bg-muted/30 border-border/60 opacity-75"
+                          }`}
+                        >
+                          <div className="flex items-center justify-between mb-2.5">
+                            <div className="flex items-center gap-2">
+                              <ShoppingBag className="h-4 w-4 text-primary" />
+                              <span className="font-bold text-sm text-foreground">
+                                {store.loja}
+                              </span>
+                              <span
+                                className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-bold ${
+                                  store.ativo
+                                    ? "bg-success/20 text-success-foreground"
+                                    : "bg-muted text-muted-foreground border border-border"
+                                }`}
+                              >
+                                {store.ativo ? "Ativo" : "Desativado"}
+                              </span>
+                            </div>
+
+                            {/* Opção ativar/desativar por loja */}
+                            <label className="flex items-center gap-2 cursor-pointer select-none">
+                              <span className="text-xs font-semibold text-muted-foreground">
+                                {store.ativo ? "Habilitado" : "Desabilitado"}
+                              </span>
+                              <input
+                                type="checkbox"
+                                checked={store.ativo}
+                                onChange={(e) => handleStoreToggle(store.loja, e.target.checked)}
+                                className="h-4 w-4 rounded accent-primary cursor-pointer"
+                              />
+                            </label>
+                          </div>
+
+                          <div className="space-y-1.5">
+                            <label className="text-[11px] font-semibold text-muted-foreground">
+                              Modelo do link (apenas https:// com a tag {"{busca}"})
+                            </label>
+                            <input
+                              type="text"
+                              value={store.modelo}
+                              onChange={(e) => handleStoreModelChange(store.loja, e.target.value)}
+                              placeholder={`https://...{busca}...`}
+                              className="w-full rounded-xl border border-border bg-muted/60 px-3.5 py-2.5 text-xs font-mono text-foreground outline-none focus:border-primary transition"
+                            />
+                          </div>
+
+                          <div className="flex items-center justify-between gap-2 mt-3 pt-2.5 border-t border-border/60">
+                            {/* Botão Restaurar padrão */}
+                            <button
+                              type="button"
+                              onClick={() => handleStoreReset(store.loja)}
+                              className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-muted-foreground hover:text-foreground py-1 transition cursor-pointer"
+                            >
+                              <RotateCcw className="h-3 w-3" /> Restaurar padrão
+                            </button>
+
+                            {/* Botão Testar link */}
+                            <button
+                              type="button"
+                              onClick={() => handleTestLink(store)}
+                              className="inline-flex items-center gap-1.5 rounded-lg bg-secondary px-3 py-1.5 text-xs font-bold text-secondary-foreground hover:opacity-90 transition cursor-pointer"
+                            >
+                              <ExternalLink className="h-3.5 w-3.5" /> Testar link
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+
+                      <div className="pt-2">
+                        <button
+                          type="button"
+                          onClick={handleSaveStores}
+                          disabled={savingStores}
+                          className={btnPrimary}
+                        >
+                          {savingStores ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <Save className="h-4 w-4" />
+                          )}
+                          <span>Salvar Todos os Ajustes</span>
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           )}
 
