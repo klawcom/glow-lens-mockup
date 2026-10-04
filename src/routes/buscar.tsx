@@ -9,7 +9,7 @@ import { PRODUCTS } from "@/data/products";
 
 export const Route = createFileRoute("/buscar")({
   validateSearch: (search: Record<string, unknown>) => ({
-    q: typeof search?.q === "string" ? search.q : "",
+    q: typeof search?.["q"] === "string" ? (search["q"] as string) : undefined,
   }),
   head: () => ({
     meta: [

@@ -7,7 +7,7 @@ export function checkRateLimit(key: string, now = Date.now(), limit = LIMIT_PER_
   const recent = (hits.get(key) ?? []).filter((t) => now - t < WINDOW_MS);
   if (recent.length >= limit) {
     hits.set(key, recent);
-    const retryMin = Math.ceil((WINDOW_MS - (now - recent[0])) / 60000);
+    const retryMin = Math.ceil((WINDOW_MS - (now - (recent[0] ?? now))) / 60000);
     return { ok: false as const, retryMin };
   }
   recent.push(now);

@@ -87,7 +87,7 @@ export function ScanPage() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [manualQuery, setManualQuery] = useState("");
   const [aiStatus, setAiStatus] = useState<
-    { type: "analyzing" } | { type: "retake"; guess?: string } | { type: "error"; message: string }
+    { type: "analyzing" } | { type: "retake"; guess?: string | undefined } | { type: "error"; message: string }
   >({ type: "analyzing" });
   const identify = useServerFn(identifyProduct);
 

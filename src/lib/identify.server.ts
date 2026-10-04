@@ -20,7 +20,7 @@ Regras:
 - Se não for um produto de beleza, use confidence "baixo".`;
 
 export async function identifyWithAi(imageDataUrl: string): Promise<AiIdentification> {
-  const apiKey = process.env.LOVABLE_API_KEY;
+  const apiKey = process.env["LOVABLE_API_KEY"];
   if (!apiKey) throw new Error("CONFIG");
   const provider = createOpenAI({
     baseURL: "https://ai.gateway.lovable.dev/v1",
