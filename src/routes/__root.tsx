@@ -13,7 +13,8 @@ import { useEffect, type ReactNode } from "react";
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { ThemeProvider } from "@/lib/theme";
-import { BottomNav } from "@/components/BottomNav";
+import { TopNav } from "@/components/TopNav";
+import { FloatingScanButton } from "@/components/FloatingScanButton";
 import { APP_CONFIG } from "@/config/app";
 
 function NotFoundComponent() {
@@ -112,10 +113,11 @@ function RootComponent() {
   return (
     <QueryClientProvider client={queryClient}>
       <ThemeProvider>
-        <main className="mx-auto min-h-screen max-w-md px-5 pb-32">
+        <TopNav />
+        <main className="mx-auto min-h-screen max-w-md px-4 sm:px-5 pt-18 sm:pt-20 pb-36 sm:pb-44">
           <Outlet />
         </main>
-        <BottomNav />
+        <FloatingScanButton />
       </ThemeProvider>
     </QueryClientProvider>
   );

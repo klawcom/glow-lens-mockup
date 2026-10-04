@@ -47,7 +47,7 @@ export function HomeAuthSection({ isOpen, onToggle }: { isOpen?: boolean; onTogg
     text: string;
   } | null>(null);
 
-  // Sincroniza abertura externa (ex: clique no ícone de perfil do header)
+  // Sincroniza abertura externa (ex: clique no ícone de perfil do header ou prop)
   useEffect(() => {
     if (isOpen !== undefined) {
       setMode((current) => {
@@ -57,6 +57,14 @@ export function HomeAuthSection({ isOpen, onToggle }: { isOpen?: boolean; onTogg
       });
     }
   }, [isOpen]);
+
+  useEffect(() => {
+    const handleToggle = () => {
+      setMode((current) => (current === "none" ? "login" : "none"));
+    };
+    window.addEventListener("toggle-glowlens-auth", handleToggle);
+    return () => window.removeEventListener("toggle-glowlens-auth", handleToggle);
+  }, []);
 
   useEffect(() => {
     const {
