@@ -20,15 +20,7 @@ import {
 import { PageHeader } from "@/components/PageHeader";
 import { useServerFn } from "@tanstack/react-start";
 import { identifyProduct } from "@/lib/identify.functions";
-
-function getDeviceId() {
-  let id = localStorage.getItem("glowlens-device");
-  if (!id) {
-    id = crypto.randomUUID();
-    localStorage.setItem("glowlens-device", id);
-  }
-  return id;
-}
+import { getDeviceId } from "@/lib/device";
 
 // Reduz a foto para no máximo `max` px no maior lado e devolve JPEG em base64.
 async function resizeImage(file: File, max: number): Promise<string> {

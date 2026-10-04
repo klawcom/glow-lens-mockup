@@ -49,7 +49,12 @@ function AdminPage() {
         : await supabase.auth.signUp({
             email,
             password,
-            options: { emailRedirectTo: `${window.location.origin}/admin` },
+            options: {
+              emailRedirectTo:
+                typeof window !== "undefined"
+                  ? `${window.location.origin}/admin`
+                  : "https://glowlens.lovable.app/admin",
+            },
           });
     if (error) setMsg("Não foi possível entrar. Confira e-mail e senha.");
     else if (mode === "up" && !data.session)
