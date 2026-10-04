@@ -108,8 +108,22 @@ export const refreshTrendingNow = createServerFn({ method: "POST" })
   .handler(async ({ context }) => {
     try {
       const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+      const { APP_CONFIG } = await import("@/config/app");
+      const ownerEmail = APP_CONFIG.ownerEmail.toLowerCase().trim();
 
-      // Validar no backend se o usuário logado é admin
+      // Buscar os dados do usuário autenticado no Supabase Auth
+      const { data: userData } = await supabaseAdmin.auth.admin.getUserById(context.userId);
+      const userEmail = (
+        userData?.user?.email ??
+        (context.claims as { email?: string })?.email ??
+        ""
+      )
+        .toLowerCase()
+        .trim();
+
+      const isOwner = userEmail === ownerEmail;
+
+      // Verificar permissão no banco na tabela user_roles
       const { data: adminRecord } = await supabaseAdmin
         .from("user_roles")
         .select("id")
@@ -117,18 +131,18 @@ export const refreshTrendingNow = createServerFn({ method: "POST" })
         .eq("role", "admin")
         .maybeSingle();
 
-      if (!adminRecord) {
-        // Se ainda não é admin, verifica se já existe algum admin registrado
-        const { count } = await supabaseAdmin
-          .from("user_roles")
-          .select("id", { count: "exact", head: true })
-          .eq("role", "admin");
-
-        if ((count ?? 0) > 0) {
-          return { ok: false, message: "Apenas o dono do app pode atualizar." };
+      if (isOwner) {
+        // Se for o e-mail do dono configurado, garante o papel de admin
+        if (!adminRecord) {
+          await supabaseAdmin
+            .from("user_roles")
+            .upsert({ user_id: context.userId, role: "admin" }, { onConflict: "user_id,role" });
         }
-        // Primeiro usuário autenticado a solicitar se torna o dono (admin)
-        await supabaseAdmin.from("user_roles").insert({ user_id: context.userId, role: "admin" });
+      } else if (!adminRecord) {
+        return {
+          ok: false,
+          message: `Apenas o dono do app (${ownerEmail}) pode atualizar.`,
+        };
       }
 
       const { refreshTrending } = await import("./trending.server");
