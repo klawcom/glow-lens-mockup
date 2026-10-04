@@ -18,6 +18,28 @@ import {
   Trash2,
 } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
+import { useServerFn } from "@tanstack/react-start";
+import { identifyProduct } from "@/lib/identify.functions";
+
+function getDeviceId() {
+  let id = localStorage.getItem("glowlens-device");
+  if (!id) {
+    id = crypto.randomUUID();
+    localStorage.setItem("glowlens-device", id);
+  }
+  return id;
+}
+
+// Reduz a foto para no máximo `max` px no maior lado e devolve JPEG em base64.
+async function resizeImage(file: File, max: number): Promise<string> {
+  const bmp = await createImageBitmap(file);
+  const scale = Math.min(1, max / Math.max(bmp.width, bmp.height));
+  const canvas = document.createElement("canvas");
+  canvas.width = Math.round(bmp.width * scale);
+  canvas.height = Math.round(bmp.height * scale);
+  canvas.getContext("2d")!.drawImage(bmp, 0, 0, canvas.width, canvas.height);
+  return canvas.toDataURL("image/jpeg", 0.85);
+}
 
 export const Route = createFileRoute("/escanear")({
   head: () => ({
@@ -64,6 +86,10 @@ export function ScanPage() {
   const [permissionDenied, setPermissionDenied] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [manualQuery, setManualQuery] = useState("");
+  const [aiStatus, setAiStatus] = useState<
+    { type: "analyzing" } | { type: "retake"; guess?: string } | { type: "error"; message: string }
+  >({ type: "analyzing" });
+  const identify = useServerFn(identifyProduct);
 
   const scannerRef = useRef<Html5Qrcode | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -288,6 +314,24 @@ export function ScanPage() {
     };
   }, [cameraActive, handleDecodedCode]);
 
+  const runAi = async (file: File) => {
+    setAiStatus({ type: "analyzing" });
+    try {
+      const image = await resizeImage(file, 1024);
+      const res = await identify({ data: { image, deviceId: getDeviceId() } });
+      if (res.status === "ok") {
+        sessionStorage.setItem("glowlens-ai-result", JSON.stringify(res));
+        navigate({ to: "/identificado" });
+      } else if (res.status === "retake") {
+        setAiStatus({ type: "retake", guess: res.ai?.name ? `${res.ai.name}${res.ai.brand ? ` (${res.ai.brand})` : ""}` : undefined });
+      } else {
+        setAiStatus({ type: "error", message: res.message });
+      }
+    } catch {
+      setAiStatus({ type: "error", message: "Sem conexão ou erro no envio. Tente de novo." });
+    }
+  };
+
   // Enviar / Tirar foto do produto
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -295,6 +339,7 @@ export function ScanPage() {
 
     await stopCamera();
     const previewUrl = URL.createObjectURL(file);
+    setAiStatus({ type: "analyzing" });
     setViewState({ type: "photo", previewUrl });
 
     // TODO: identificação por IA
@@ -322,9 +367,10 @@ export function ScanPage() {
       }
     } catch (err) {
       void err;
-      // Se não encontrou código de barras na foto, mantém na prévia de IA
-      // TODO: identificação por IA (processamento via modelo de visão)
+      // Sem código na foto: identificação por IA
+      await runAi(file);
     }
+    e.target.value = "";
   };
 
   const handleManualSearch = () => {
@@ -708,12 +754,32 @@ export function ScanPage() {
               {viewState.scannedInfo}
             </div>
           ) : (
-            <div className="rounded-2xl bg-muted p-4 text-center space-y-2">
-              <p className="text-sm font-bold text-foreground">Foto pronta para análise visual!</p>
-              {/* TODO: identificação por IA */}
-              <p className="text-xs text-muted-foreground">
-                O reconhecimento inteligente de embalagens e rótulos por IA será ativado em breve.
-              </p>
+            <div className="rounded-2xl bg-muted p-4 text-center space-y-2" aria-live="polite">
+              {aiStatus.type === "analyzing" && (
+                <p className="flex items-center justify-center gap-2 text-sm font-bold text-foreground">
+                  <Loader2 className="h-4 w-4 animate-spin text-primary" /> Identificando o produto com IA...
+                </p>
+              )}
+              {aiStatus.type === "retake" && (
+                <>
+                  <p className="flex items-center justify-center gap-2 text-sm font-bold text-foreground">
+                    <AlertCircle className="h-4 w-4 text-primary" /> Não deu para identificar com certeza
+                  </p>
+                  {aiStatus.guess && (
+                    <p className="text-xs text-muted-foreground">Palpite: {aiStatus.guess}</p>
+                  )}
+                  <ul className="text-xs text-muted-foreground text-left list-disc pl-5">
+                    <li>Use boa luz, sem reflexo</li>
+                    <li>Deixe o rótulo de frente e inteiro na foto</li>
+                    <li>Segure firme para a foto não ficar borrada</li>
+                  </ul>
+                </>
+              )}
+              {aiStatus.type === "error" && (
+                <p className="flex items-center justify-center gap-2 text-sm font-bold text-foreground">
+                  <AlertCircle className="h-4 w-4 text-primary" /> {aiStatus.message}
+                </p>
+              )}
             </div>
           )}
 
