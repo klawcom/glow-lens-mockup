@@ -32,7 +32,11 @@ export function ThemeToggle({ compact = false }: { compact?: boolean }) {
           <span className="font-display text-lg font-semibold">{t.label}</span>
           <span className="flex gap-1">
             {t.swatch.map((c) => (
-              <span key={c} className="h-6 w-6 rounded-full border border-border" style={{ background: c }} />
+              <span
+                key={c}
+                className="h-6 w-6 rounded-full border border-border"
+                style={{ background: c }}
+              />
             ))}
           </span>
         </button>

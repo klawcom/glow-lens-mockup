@@ -87,7 +87,9 @@ export function ScanPage() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [manualQuery, setManualQuery] = useState("");
   const [aiStatus, setAiStatus] = useState<
-    { type: "analyzing" } | { type: "retake"; guess?: string | undefined } | { type: "error"; message: string }
+    | { type: "analyzing" }
+    | { type: "retake"; guess?: string | undefined }
+    | { type: "error"; message: string }
   >({ type: "analyzing" });
   const identify = useServerFn(identifyProduct);
 
@@ -323,7 +325,12 @@ export function ScanPage() {
         sessionStorage.setItem("glowlens-ai-result", JSON.stringify(res));
         navigate({ to: "/identificado" });
       } else if (res.status === "retake") {
-        setAiStatus({ type: "retake", guess: res.ai?.name ? `${res.ai.name}${res.ai.brand ? ` (${res.ai.brand})` : ""}` : undefined });
+        setAiStatus({
+          type: "retake",
+          guess: res.ai?.name
+            ? `${res.ai.name}${res.ai.brand ? ` (${res.ai.brand})` : ""}`
+            : undefined,
+        });
       } else {
         setAiStatus({ type: "error", message: res.message });
       }
@@ -757,13 +764,15 @@ export function ScanPage() {
             <div className="rounded-2xl bg-muted p-4 text-center space-y-2" aria-live="polite">
               {aiStatus.type === "analyzing" && (
                 <p className="flex items-center justify-center gap-2 text-sm font-bold text-foreground">
-                  <Loader2 className="h-4 w-4 animate-spin text-primary" /> Identificando o produto com IA...
+                  <Loader2 className="h-4 w-4 animate-spin text-primary" /> Identificando o produto
+                  com IA...
                 </p>
               )}
               {aiStatus.type === "retake" && (
                 <>
                   <p className="flex items-center justify-center gap-2 text-sm font-bold text-foreground">
-                    <AlertCircle className="h-4 w-4 text-primary" /> Não deu para identificar com certeza
+                    <AlertCircle className="h-4 w-4 text-primary" /> Não deu para identificar com
+                    certeza
                   </p>
                   {aiStatus.guess && (
                     <p className="text-xs text-muted-foreground">Palpite: {aiStatus.guess}</p>

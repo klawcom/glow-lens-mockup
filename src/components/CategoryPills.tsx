@@ -9,7 +9,13 @@ const tone: Record<Category, string> = {
   Corpo: "bg-accent text-accent-foreground",
 };
 
-export function CategoryPills({ active, onChange }: { active: Category | null; onChange: (c: Category | null) => void }) {
+export function CategoryPills({
+  active,
+  onChange,
+}: {
+  active: Category | null;
+  onChange: (c: Category | null) => void;
+}) {
   return (
     <div className="no-scrollbar -mx-5 flex gap-2 overflow-x-auto px-5">
       {CATEGORIES.map((c) => (

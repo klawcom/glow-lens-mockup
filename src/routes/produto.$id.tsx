@@ -34,46 +34,84 @@ function ProductPage() {
   return (
     <div className="space-y-4 pt-5">
       <div className="flex justify-between">
-        <Link to="/" aria-label="Voltar" className="grid h-11 w-11 place-items-center rounded-full bg-card shadow-card">
+        <Link
+          to="/"
+          aria-label="Voltar"
+          className="grid h-11 w-11 place-items-center rounded-full bg-card shadow-card"
+        >
           <ArrowLeft className="h-5 w-5" />
         </Link>
-        <button onClick={() => toggle(p.id)} aria-label="Favoritar" className="grid h-11 w-11 place-items-center rounded-full bg-card text-primary shadow-card">
+        <button
+          onClick={() => toggle(p.id)}
+          aria-label="Favoritar"
+          className="grid h-11 w-11 place-items-center rounded-full bg-card text-primary shadow-card"
+        >
           <Heart className={`h-5 w-5 ${fav ? "fill-current" : ""}`} />
         </button>
       </div>
-      <img src={p.image} alt={p.name} width={816} height={816} className="aspect-square w-full rounded-3xl object-cover shadow-card" />
+      <img
+        src={p.image}
+        alt={p.name}
+        width={816}
+        height={816}
+        className="aspect-square w-full rounded-3xl object-cover shadow-card"
+      />
       <div>
-        <p className="text-sm font-semibold text-link">{p.brand} · {p.category}</p>
+        <p className="text-sm font-semibold text-link">
+          {p.brand} · {p.category}
+        </p>
         <h1 className="text-3xl font-bold">{p.name}</h1>
         <Stars rating={p.rating} />
       </div>
       <section className={box}>
-        <h2 className="mb-1 flex items-center gap-2 text-lg font-semibold"><Flame className="h-5 w-5 text-primary" />Por que está em alta</h2>
+        <h2 className="mb-1 flex items-center gap-2 text-lg font-semibold">
+          <Flame className="h-5 w-5 text-primary" />
+          Por que está em alta
+        </h2>
         <p className="text-muted-foreground">{p.whyTrending}</p>
       </section>
       <section className={box}>
         <h2 className="mb-2 text-lg font-semibold">Quem usa / recomenda</h2>
         <ul className="space-y-1">
           {p.recommendedBy.map((r) => (
-            <li key={r.name}><b>{r.name}</b> <span className="text-sm text-muted-foreground">— fonte: {r.source}</span></li>
+            <li key={r.name}>
+              <b>{r.name}</b>{" "}
+              <span className="text-sm text-muted-foreground">— fonte: {r.source}</span>
+            </li>
           ))}
         </ul>
       </section>
       <div className="grid grid-cols-2 gap-3">
         <section className="rounded-2xl bg-success p-4 text-success-foreground">
           <h2 className="mb-1 font-semibold">Prós</h2>
-          {p.pros.map((x) => <p key={x} className="flex gap-1 text-sm"><Plus className="h-4 w-4 shrink-0" />{x}</p>)}
+          {p.pros.map((x) => (
+            <p key={x} className="flex gap-1 text-sm">
+              <Plus className="h-4 w-4 shrink-0" />
+              {x}
+            </p>
+          ))}
         </section>
         <section className="rounded-2xl bg-secondary p-4 text-secondary-foreground">
           <h2 className="mb-1 font-semibold">Contras</h2>
-          {p.cons.map((x) => <p key={x} className="flex gap-1 text-sm"><Minus className="h-4 w-4 shrink-0" />{x}</p>)}
+          {p.cons.map((x) => (
+            <p key={x} className="flex gap-1 text-sm">
+              <Minus className="h-4 w-4 shrink-0" />
+              {x}
+            </p>
+          ))}
         </section>
       </div>
       <section className={box}>
         <h2 className="mb-2 text-lg font-semibold">Onde comprar</h2>
         <div className="grid gap-2">
           {p.stores.map((s) => (
-            <a key={s.name} href={s.url} target="_blank" rel="noreferrer" className="flex items-center justify-between rounded-full bg-primary px-5 py-3 font-semibold text-primary-foreground">
+            <a
+              key={s.name}
+              href={s.url}
+              target="_blank"
+              rel="noreferrer"
+              className="flex items-center justify-between rounded-full bg-primary px-5 py-3 font-semibold text-primary-foreground"
+            >
               {s.name} <ExternalLink className="h-4 w-4" />
             </a>
           ))}

@@ -5,5 +5,11 @@ import perfume from "@/assets/p-perfume.jpg";
 import cabelo from "@/assets/p-cabelo.jpg";
 import corpo from "@/assets/p-corpo.jpg";
 
-const MAP: Record<string, string> = { Pele: serum, Cabelo: cabelo, Maquiagem: batom, Perfume: perfume, Corpo: corpo };
+const MAP: Record<string, string> = {
+  Pele: serum,
+  Cabelo: cabelo,
+  Maquiagem: batom,
+  Perfume: perfume,
+  Corpo: corpo,
+};
 export const categoryImage = (c: string) => MAP[c] ?? serum;

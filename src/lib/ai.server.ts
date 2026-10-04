@@ -3,18 +3,27 @@ import { createOpenAI } from "@ai-sdk/openai";
 import { streamText, type ModelMessage } from "ai";
 
 export class AiError extends Error {
-  constructor(public status: number, message: string) {
+  constructor(
+    public status: number,
+    message: string,
+  ) {
     super(message);
   }
 }
 
 export const AI_RULES = `REGRAS OBRIGATÓRIAS:
-- Só inclua informações que tenham fonte com título e link (URL completa https) encontrados na busca.
+- Só inclua informações que tenham fonte com título e link (URL completa https://) encontrados na busca.
 - Resuma com suas próprias palavras; nunca copie textos nem imagens.
+- Para qualquer informação sem fonte comprovada com link, escreva "Sem informação confirmada" (ou lista vazia [] no caso de listas).
 - Nunca afirme que uma celebridade ou influencer usa/recomenda o produto sem uma fonte com link. Sem fonte, escreva "Sem informação confirmada".
+- Nunca invente links, fontes, marcas ou produtos.
 - Responda SOMENTE com JSON válido, em português do Brasil, sem texto fora do JSON.`;
 
-export async function runAi(opts: { messages: ModelMessage[]; webSearch?: boolean; effort?: "low" | "medium" }) {
+export async function runAi(opts: {
+  messages: ModelMessage[];
+  webSearch?: boolean;
+  effort?: "low" | "medium";
+}) {
   const apiKey = process.env["LOVABLE_API_KEY"];
   if (!apiKey) throw new AiError(500, "CONFIG");
   const provider = createOpenAI({
@@ -58,14 +67,19 @@ export type Fonte = { titulo: string; url: string };
 export function cleanFontes(v: unknown): Fonte[] {
   if (!Array.isArray(v)) return [];
   return v
-    .map((f) => ({ titulo: String(f?.titulo ?? f?.title ?? "").slice(0, 160), url: String(f?.url ?? "") }))
-    .filter((f) => /^https?:\/\//.test(f.url) && f.titulo)
+    .map((f) => ({
+      titulo: String(f?.titulo ?? f?.title ?? "")
+        .slice(0, 160)
+        .trim(),
+      url: String(f?.url ?? "").trim(),
+    }))
+    .filter((f) => /^https?:\/\//.test(f.url) && f.titulo.length > 0)
     .slice(0, 8);
 }
 
-export function friendlyAiMessage(e: unknown) {
-  const s = e instanceof AiError ? e.status : 500;
+export function friendlyAiMessage(e: unknown): string {
+  const s = e instanceof AiError ? e.status : ((e as { statusCode?: number })?.statusCode ?? 500);
   if (s === 429) return "Muitas pessoas usando agora. Tente em alguns instantes.";
   if (s === 402 || s === 403) return "A IA está indisponível no momento. Tente mais tarde.";
-  return "Não conseguimos concluir agora. Tente novamente.";
+  return "Não conseguimos concluir a consulta agora. Tente novamente em instantes.";
 }

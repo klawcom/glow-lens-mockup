@@ -18,13 +18,23 @@ Cada produto precisa de pelo menos 1 fonte com link.`,
       },
     ],
   });
-  const raw = parseJson<{ produtos?: unknown[] }>(text);
+  type RawTrendingItem = {
+    nome?: unknown;
+    marca?: unknown;
+    categoria?: unknown;
+    por_que?: unknown;
+    fontes?: unknown;
+    posicao?: unknown;
+  };
+
+  const raw = parseJson<{ produtos?: RawTrendingItem[] }>(text);
   const items = (raw.produtos ?? [])
-    .map((p: any, i) => ({
+    .map((p, i) => ({
       nome: String(p?.nome ?? "").slice(0, 120),
       marca: String(p?.marca ?? "").slice(0, 80),
-      categoria: CATS.includes(p?.categoria) ? p.categoria : "Outro",
-      por_que: String(p?.por_que ?? "").slice(0, 400),
+      categoria:
+        typeof p?.categoria === "string" && CATS.includes(p.categoria) ? p.categoria : "Outro",
+      por_que: String(p?.por_que || "Sem informação confirmada").slice(0, 400),
       fontes: cleanFontes(p?.fontes),
       posicao: Number(p?.posicao) || i + 1,
       pais,
@@ -39,9 +49,18 @@ export async function refreshTrending(): Promise<{ ok: boolean; message: string 
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
   const now = new Date();
   // Trava para não rodar duas vezes ao mesmo tempo
-  const { data: lock } = await supabaseAdmin.from("job_status").select("travado_ate").eq("nome", "trending").maybeSingle();
-  if (lock?.travado_ate && new Date(lock.travado_ate) > now) return { ok: false, message: "Atualização já em andamento." };
-  await supabaseAdmin.from("job_status").upsert({ nome: "trending", travado_ate: new Date(now.getTime() + 10 * 60_000).toISOString(), ultimo_status: "rodando" });
+  const { data: lock } = await supabaseAdmin
+    .from("job_status")
+    .select("travado_ate")
+    .eq("nome", "trending")
+    .maybeSingle();
+  if (lock?.travado_ate && new Date(lock.travado_ate) > now)
+    return { ok: false, message: "Atualização já em andamento." };
+  await supabaseAdmin.from("job_status").upsert({
+    nome: "trending",
+    travado_ate: new Date(now.getTime() + 10 * 60_000).toISOString(),
+    ultimo_status: "rodando",
+  });
 
   const results = await Promise.allSettled([fetchList("Brasil"), fetchList("Mundo")]);
   const msgs: string[] = [];
@@ -49,13 +68,19 @@ export async function refreshTrending(): Promise<{ ok: boolean; message: string 
     if (r.status === "fulfilled") {
       const pais = r.value[0]!.pais;
       const atualizado_em = new Date().toISOString();
-      const { error } = await supabaseAdmin.from("produtos_em_alta").insert(r.value.map((p) => ({ ...p, atualizado_em })));
+      const { error } = await supabaseAdmin
+        .from("produtos_em_alta")
+        .insert(r.value.map((p) => ({ ...p, atualizado_em })));
       if (error) {
         msgs.push(`${pais}: erro ao salvar`);
         continue;
       }
       // Só apaga a lista antiga depois de salvar a nova
-      await supabaseAdmin.from("produtos_em_alta").delete().eq("pais", pais).lt("atualizado_em", atualizado_em);
+      await supabaseAdmin
+        .from("produtos_em_alta")
+        .delete()
+        .eq("pais", pais)
+        .lt("atualizado_em", atualizado_em);
       msgs.push(`${pais}: ${r.value.length} produtos`);
     } else {
       console.error(r.reason);

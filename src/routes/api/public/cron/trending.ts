@@ -8,10 +8,15 @@ export const Route = createFileRoute("/api/public/cron/trending")({
         const token = /^Bearer (\S+)$/.exec(request.headers.get("authorization") ?? "")?.[1];
         if (!token) return new Response("Unauthorized", { status: 401 });
         const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-        const { data } = await supabaseAdmin.from("app_config").select("valor").eq("chave", "cron_token").maybeSingle();
+        const { data } = await supabaseAdmin
+          .from("app_config")
+          .select("valor")
+          .eq("chave", "cron_token")
+          .maybeSingle();
         const { createHash, timingSafeEqual } = await import("node:crypto");
         const h = (v: string) => createHash("sha256").update(v).digest();
-        if (!data?.valor || !timingSafeEqual(h(token), h(data.valor))) return new Response("Unauthorized", { status: 401 });
+        if (!data?.valor || !timingSafeEqual(h(token), h(data.valor)))
+          return new Response("Unauthorized", { status: 401 });
         const { refreshTrending } = await import("@/lib/trending.server");
         const result = await refreshTrending();
         return Response.json(result, { status: result.ok ? 200 : 500 });

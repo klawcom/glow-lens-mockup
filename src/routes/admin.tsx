@@ -35,8 +35,10 @@ function AdminPage() {
     return () => data.subscription.unsubscribe();
   }, []);
 
-  const input = "w-full rounded-full border-2 border-border bg-muted px-4 py-3 text-sm outline-none focus:border-primary";
-  const btn = "flex w-full items-center justify-center gap-2 rounded-full bg-primary py-3 font-semibold text-primary-foreground shadow-soft disabled:opacity-60";
+  const input =
+    "w-full rounded-full border-2 border-border bg-muted px-4 py-3 text-sm outline-none focus:border-primary";
+  const btn =
+    "flex w-full items-center justify-center gap-2 rounded-full bg-primary py-3 font-semibold text-primary-foreground shadow-soft disabled:opacity-60";
 
   const auth = async (mode: "in" | "up") => {
     setBusy(true);
@@ -44,9 +46,14 @@ function AdminPage() {
     const { error, data } =
       mode === "in"
         ? await supabase.auth.signInWithPassword({ email, password })
-        : await supabase.auth.signUp({ email, password, options: { emailRedirectTo: `${window.location.origin}/admin` } });
+        : await supabase.auth.signUp({
+            email,
+            password,
+            options: { emailRedirectTo: `${window.location.origin}/admin` },
+          });
     if (error) setMsg("Não foi possível entrar. Confira e-mail e senha.");
-    else if (mode === "up" && !data.session) setMsg("Enviamos um link de confirmação para o seu e-mail.");
+    else if (mode === "up" && !data.session)
+      setMsg("Enviamos um link de confirmação para o seu e-mail.");
     setBusy(false);
   };
 
@@ -56,8 +63,13 @@ function AdminPage() {
     try {
       const r = await refresh();
       setMsg(r.ok ? `Pronto! ${r.message}` : r.message);
-    } catch {
-      setMsg("Falhou. A lista anterior foi mantida.");
+    } catch (err: unknown) {
+      const errStr = String((err as { message?: string })?.message || "");
+      if (errStr.includes("Unauthorized") || errStr.includes("dono")) {
+        setMsg("Apenas o dono do app pode atualizar.");
+      } else {
+        setMsg("Não foi possível atualizar agora. A lista anterior foi mantida.");
+      }
     }
     setBusy(false);
   };
@@ -68,21 +80,55 @@ function AdminPage() {
       <div className="space-y-3 rounded-2xl bg-card p-5 shadow-card">
         {!session ? (
           <>
-            <input className={input} type="email" placeholder="E-mail" value={email} onChange={(e) => setEmail(e.target.value)} />
-            <input className={input} type="password" placeholder="Senha" value={password} onChange={(e) => setPassword(e.target.value)} />
-            <button className={btn} disabled={busy} onClick={() => auth("in")}>Entrar</button>
-            <button className="w-full text-sm font-semibold text-link" disabled={busy} onClick={() => auth("up")}>Criar conta do dono</button>
+            <input
+              className={input}
+              type="email"
+              placeholder="E-mail"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+            />
+            <input
+              className={input}
+              type="password"
+              placeholder="Senha"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+            />
+            <button className={btn} disabled={busy} onClick={() => auth("in")}>
+              Entrar
+            </button>
+            <button
+              className="w-full text-sm font-semibold text-link"
+              disabled={busy}
+              onClick={() => auth("up")}
+            >
+              Criar conta do dono
+            </button>
           </>
         ) : (
           <>
             <p className="text-sm text-muted-foreground">Conectado como {session.user.email}</p>
             <button className={btn} disabled={busy} onClick={run}>
-              {busy ? <Loader2 className="h-5 w-5 animate-spin" /> : <RefreshCw className="h-5 w-5" />} Atualizar agora
+              {busy ? (
+                <Loader2 className="h-5 w-5 animate-spin" />
+              ) : (
+                <RefreshCw className="h-5 w-5" />
+              )}{" "}
+              Atualizar agora
             </button>
-            <button className="w-full text-sm font-semibold text-link" onClick={() => supabase.auth.signOut()}>Sair</button>
+            <button
+              className="w-full text-sm font-semibold text-link"
+              onClick={() => supabase.auth.signOut()}
+            >
+              Sair
+            </button>
           </>
         )}
-        {msg && <p className="text-center text-sm font-semibold" aria-live="polite">{msg}</p>}
+        {msg && (
+          <p className="text-center text-sm font-semibold" aria-live="polite">
+            {msg}
+          </p>
+        )}
       </div>
     </>
   );

@@ -12,9 +12,16 @@ export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
       { title: "Glow Lens — Produtos de beleza em alta no Brasil" },
-      { name: "description", content: "Descubra os produtos de beleza mais famosos do momento: pele, cabelo, maquiagem, perfume e corpo." },
+      {
+        name: "description",
+        content:
+          "Descubra os produtos de beleza mais famosos do momento: pele, cabelo, maquiagem, perfume e corpo.",
+      },
       { property: "og:title", content: "Glow Lens — Produtos de beleza em alta" },
-      { property: "og:description", content: "Os produtos de beleza mais famosos do momento no Brasil." },
+      {
+        property: "og:description",
+        content: "Os produtos de beleza mais famosos do momento no Brasil.",
+      },
     ],
   }),
   component: Home,

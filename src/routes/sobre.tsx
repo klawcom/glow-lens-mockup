@@ -25,7 +25,8 @@ function AboutPage() {
         <div className="flex items-center gap-4 rounded-3xl bg-card p-5 shadow-card">
           <img src={icon.url} alt={APP_CONFIG.name} className="h-20 w-20 rounded-2xl" />
           <p className="text-muted-foreground">
-            O <b className="text-foreground">{APP_CONFIG.name}</b> mostra os produtos de beleza mais famosos do momento no {APP_CONFIG.country}, com notas, prós e contras e onde comprar.
+            O <b className="text-foreground">{APP_CONFIG.name}</b> mostra os produtos de beleza mais
+            famosos do momento no {APP_CONFIG.country}, com notas, prós e contras e onde comprar.
           </p>
         </div>
         <div>

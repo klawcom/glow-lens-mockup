@@ -64,7 +64,14 @@ export async function identifyWithAi(imageDataUrl: string): Promise<AiIdentifica
   };
 }
 
-export type OffProduct = { code: string; name: string; brand: string; image: string; ingredients: string; url: string };
+export type OffProduct = {
+  code: string;
+  name: string;
+  brand: string;
+  image: string;
+  ingredients: string;
+  url: string;
+};
 
 export async function searchOpenBeautyFacts(query: string): Promise<OffProduct | null> {
   try {
