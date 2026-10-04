@@ -16,6 +16,7 @@ import { Route as FavoritosRouteImport } from './routes/favoritos'
 import { Route as IdentificadoRouteImport } from './routes/identificado'
 import { Route as SobreRouteImport } from './routes/sobre'
 import { Route as ProdutoIdRouteImport } from './routes/produto.$id'
+import { Route as ApiPublicCronTrendingRouteImport } from './routes/api/public/cron/trending'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -52,6 +53,11 @@ const ProdutoIdRoute = ProdutoIdRouteImport.update({
   path: '/produto/$id',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicCronTrendingRoute = ApiPublicCronTrendingRouteImport.update({
+  id: '/api/public/cron/trending',
+  path: '/api/public/cron/trending',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -61,6 +67,7 @@ export interface FileRoutesByFullPath {
   '/identificado': typeof IdentificadoRoute
   '/sobre': typeof SobreRoute
   '/produto/$id': typeof ProdutoIdRoute
+  '/api/public/cron/trending': typeof ApiPublicCronTrendingRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -70,6 +77,7 @@ export interface FileRoutesByTo {
   '/identificado': typeof IdentificadoRoute
   '/sobre': typeof SobreRoute
   '/produto/$id': typeof ProdutoIdRoute
+  '/api/public/cron/trending': typeof ApiPublicCronTrendingRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -80,6 +88,7 @@ export interface FileRoutesById {
   '/identificado': typeof IdentificadoRoute
   '/sobre': typeof SobreRoute
   '/produto/$id': typeof ProdutoIdRoute
+  '/api/public/cron/trending': typeof ApiPublicCronTrendingRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -91,6 +100,7 @@ export interface FileRouteTypes {
     | '/identificado'
     | '/sobre'
     | '/produto/$id'
+    | '/api/public/cron/trending'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -100,6 +110,7 @@ export interface FileRouteTypes {
     | '/identificado'
     | '/sobre'
     | '/produto/$id'
+    | '/api/public/cron/trending'
   id:
     | '__root__'
     | '/'
@@ -109,6 +120,7 @@ export interface FileRouteTypes {
     | '/identificado'
     | '/sobre'
     | '/produto/$id'
+    | '/api/public/cron/trending'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -119,6 +131,7 @@ export interface RootRouteChildren {
   IdentificadoRoute: typeof IdentificadoRoute
   SobreRoute: typeof SobreRoute
   ProdutoIdRoute: typeof ProdutoIdRoute
+  ApiPublicCronTrendingRoute: typeof ApiPublicCronTrendingRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -172,6 +185,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ProdutoIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/cron/trending': {
+      id: '/api/public/cron/trending'
+      path: '/api/public/cron/trending'
+      fullPath: '/api/public/cron/trending'
+      preLoaderRoute: typeof ApiPublicCronTrendingRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -183,6 +203,7 @@ const rootRouteChildren: RootRouteChildren = {
   IdentificadoRoute: IdentificadoRoute,
   SobreRoute: SobreRoute,
   ProdutoIdRoute: ProdutoIdRoute,
+  ApiPublicCronTrendingRoute: ApiPublicCronTrendingRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
