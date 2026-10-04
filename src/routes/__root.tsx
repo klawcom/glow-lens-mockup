@@ -23,7 +23,10 @@ function NotFoundComponent() {
         <h1 className="text-7xl font-bold text-primary">404</h1>
         <h2 className="mt-4 text-xl font-semibold">Página não encontrada</h2>
         <div className="mt-6">
-          <Link to="/" className="inline-flex rounded-full bg-primary px-5 py-2 font-semibold text-primary-foreground">
+          <Link
+            to="/"
+            className="inline-flex rounded-full bg-primary px-5 py-2 font-semibold text-primary-foreground"
+          >
             Voltar ao início
           </Link>
         </div>
@@ -63,10 +66,17 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { name: "viewport", content: "width=device-width, initial-scale=1, viewport-fit=cover" },
       { title: APP_CONFIG.name },
       { name: "description", content: APP_CONFIG.tagline },
+      { property: "og:site_name", content: APP_CONFIG.name },
+      { property: "og:title", content: APP_CONFIG.name },
+      { property: "og:description", content: APP_CONFIG.tagline },
       { property: "og:type", content: "website" },
+      { property: "og:url", content: APP_CONFIG.url },
       { name: "twitter:card", content: "summary_large_image" },
+      { name: "twitter:title", content: APP_CONFIG.name },
+      { name: "twitter:description", content: APP_CONFIG.tagline },
     ],
     links: [
+      { rel: "canonical", href: APP_CONFIG.url },
       { rel: "stylesheet", href: appCss },
       { rel: "icon", href: "/favicon.png", type: "image/png" },
       { rel: "preconnect", href: "https://fonts.googleapis.com" },

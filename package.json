@@ -1,5 +1,6 @@
 {
-  "name": "tanstack_start_ts",
+  "name": "glow-lens",
+  "homepage": "https://glowlens.lovable.app",
   "private": true,
   "sideEffects": false,
   "type": "module",

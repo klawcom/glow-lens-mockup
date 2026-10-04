@@ -4,4 +4,5 @@ export const APP_CONFIG = {
   nameParts: ["Glow", "Lens"] as const, // usado no logo em duas linhas
   tagline: "Os produtos de beleza mais famosos do momento",
   country: "Brasil",
+  url: "https://glowlens.lovable.app",
 };

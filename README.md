@@ -1,6 +1,8 @@
-# Glow Lens Mockup
+# Glow Lens
 
-Crie uma imagem de mockup de interface de aplicativo mobile, vista de frente em um smartphone moderno, mostrando a tela inicial de um app de produtos de beleza chamado "Glow Lens". Estilo de design de app profissional (UI/UX), limpo, moderno, divertido e pop, cantos bem arredondados, sombras suaves.
+**Site oficial / Live app**: [https://glowlens.lovable.app](https://glowlens.lovable.app)
+
+Aplicativo mobile de produtos de beleza "Glow Lens". Estilo de design profissional (UI/UX), limpo, moderno, divertido e pop, cantos bem arredondados, sombras suaves.
 
 Paleta de cores: rosa intenso #FF2E93 (botões e destaques principais), rosa claro #FF8CC6 (detalhes), verde menta #C7F9CC (etiquetas), creme #FFF7E6 (fundo), roxo #9D4EDD (links e ícones).
 
