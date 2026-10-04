@@ -10,9 +10,11 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AdminRouteImport } from './routes/admin'
 import { Route as BuscarRouteImport } from './routes/buscar'
 import { Route as EscanearRouteImport } from './routes/escanear'
 import { Route as FavoritosRouteImport } from './routes/favoritos'
+import { Route as FichaRouteImport } from './routes/ficha'
 import { Route as IdentificadoRouteImport } from './routes/identificado'
 import { Route as SobreRouteImport } from './routes/sobre'
 import { Route as ProdutoIdRouteImport } from './routes/produto.$id'
@@ -21,6 +23,11 @@ import { Route as ApiPublicCronTrendingRouteImport } from './routes/api/public/c
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminRoute = AdminRouteImport.update({
+  id: '/admin',
+  path: '/admin',
   getParentRoute: () => rootRouteImport,
 } as any)
 const BuscarRoute = BuscarRouteImport.update({
@@ -36,6 +43,11 @@ const EscanearRoute = EscanearRouteImport.update({
 const FavoritosRoute = FavoritosRouteImport.update({
   id: '/favoritos',
   path: '/favoritos',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const FichaRoute = FichaRouteImport.update({
+  id: '/ficha',
+  path: '/ficha',
   getParentRoute: () => rootRouteImport,
 } as any)
 const IdentificadoRoute = IdentificadoRouteImport.update({
@@ -61,9 +73,11 @@ const ApiPublicCronTrendingRoute = ApiPublicCronTrendingRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/admin': typeof AdminRoute
   '/buscar': typeof BuscarRoute
   '/escanear': typeof EscanearRoute
   '/favoritos': typeof FavoritosRoute
+  '/ficha': typeof FichaRoute
   '/identificado': typeof IdentificadoRoute
   '/sobre': typeof SobreRoute
   '/produto/$id': typeof ProdutoIdRoute
@@ -71,9 +85,11 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/admin': typeof AdminRoute
   '/buscar': typeof BuscarRoute
   '/escanear': typeof EscanearRoute
   '/favoritos': typeof FavoritosRoute
+  '/ficha': typeof FichaRoute
   '/identificado': typeof IdentificadoRoute
   '/sobre': typeof SobreRoute
   '/produto/$id': typeof ProdutoIdRoute
@@ -82,9 +98,11 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/admin': typeof AdminRoute
   '/buscar': typeof BuscarRoute
   '/escanear': typeof EscanearRoute
   '/favoritos': typeof FavoritosRoute
+  '/ficha': typeof FichaRoute
   '/identificado': typeof IdentificadoRoute
   '/sobre': typeof SobreRoute
   '/produto/$id': typeof ProdutoIdRoute
@@ -94,9 +112,11 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/admin'
     | '/buscar'
     | '/escanear'
     | '/favoritos'
+    | '/ficha'
     | '/identificado'
     | '/sobre'
     | '/produto/$id'
@@ -104,9 +124,11 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/admin'
     | '/buscar'
     | '/escanear'
     | '/favoritos'
+    | '/ficha'
     | '/identificado'
     | '/sobre'
     | '/produto/$id'
@@ -114,9 +136,11 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
+    | '/admin'
     | '/buscar'
     | '/escanear'
     | '/favoritos'
+    | '/ficha'
     | '/identificado'
     | '/sobre'
     | '/produto/$id'
@@ -125,9 +149,11 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AdminRoute: typeof AdminRoute
   BuscarRoute: typeof BuscarRoute
   EscanearRoute: typeof EscanearRoute
   FavoritosRoute: typeof FavoritosRoute
+  FichaRoute: typeof FichaRoute
   IdentificadoRoute: typeof IdentificadoRoute
   SobreRoute: typeof SobreRoute
   ProdutoIdRoute: typeof ProdutoIdRoute
@@ -141,6 +167,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin': {
+      id: '/admin'
+      path: '/admin'
+      fullPath: '/admin'
+      preLoaderRoute: typeof AdminRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/buscar': {
@@ -162,6 +195,13 @@ declare module '@tanstack/react-router' {
       path: '/favoritos'
       fullPath: '/favoritos'
       preLoaderRoute: typeof FavoritosRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/ficha': {
+      id: '/ficha'
+      path: '/ficha'
+      fullPath: '/ficha'
+      preLoaderRoute: typeof FichaRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/identificado': {
@@ -197,9 +237,11 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AdminRoute: AdminRoute,
   BuscarRoute: BuscarRoute,
   EscanearRoute: EscanearRoute,
   FavoritosRoute: FavoritosRoute,
+  FichaRoute: FichaRoute,
   IdentificadoRoute: IdentificadoRoute,
   SobreRoute: SobreRoute,
   ProdutoIdRoute: ProdutoIdRoute,
