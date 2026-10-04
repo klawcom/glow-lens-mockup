@@ -3,6 +3,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { Camera, Sparkles } from "lucide-react";
 import { useState } from "react";
 import { PageHeader } from "@/components/PageHeader";
+import { HomeAuthSection } from "@/components/HomeAuthSection";
 import { SearchBar } from "@/components/SearchBar";
 import { CategoryPills } from "@/components/CategoryPills";
 import { ProductCard } from "@/components/ProductCard";
@@ -29,13 +30,15 @@ export const Route = createFileRoute("/")({
 
 function Home() {
   const [cat, setCat] = useState<Category | null>(null);
+  const [authOpen, setAuthOpen] = useState(false);
   const navigate = useNavigate();
   const list = PRODUCTS.filter((p) => !cat || p.category === cat);
 
   return (
     <>
-      <PageHeader />
+      <PageHeader onProfileClick={() => setAuthOpen((prev) => !prev)} />
       <div className="space-y-5">
+        <HomeAuthSection isOpen={authOpen} onToggle={() => setAuthOpen((prev) => !prev)} />
         <SearchBar onFocus={() => navigate({ to: "/buscar" })} />
         <Link
           to="/escanear"
