@@ -24,7 +24,13 @@ function IdentifiedPage() {
   const [data, setData] = useState<Ok | null | undefined>(undefined);
   useEffect(() => {
     try {
-      setData(JSON.parse(sessionStorage.getItem("glowlens-ai-result") || "null"));
+      const stored = JSON.parse(sessionStorage.getItem("glowlens-ai-result") || "null");
+      if (stored?.ai?.name) {
+        const name = stored.off?.name || `${stored.ai.brand || ""} ${stored.ai.name}`.trim();
+        window.location.replace(`/ficha?nome=${encodeURIComponent(name)}`);
+        return;
+      }
+      setData(stored);
     } catch {
       setData(null);
     }

@@ -5,7 +5,7 @@ import { useServerFn } from "@tanstack/react-start";
 import {
   ArrowLeft,
   ExternalLink,
-  Flame,
+  Sparkles,
   Loader2,
   Minus,
   Plus,
@@ -154,105 +154,159 @@ function FichaPage() {
         className="aspect-square w-full rounded-3xl bg-card object-contain shadow-card"
       />
       <div>
-        <p className="text-sm font-semibold text-link">
-          {[f.marca, f.categoria].filter(Boolean).join(" · ")}
-        </p>
-        <h1 className="text-3xl font-bold">{f.nome}</h1>
-        <p className="text-xs text-muted-foreground">
+        <div className="flex items-center justify-between gap-2 mb-1">
+          <p className="text-sm font-semibold text-link">
+            {[f.marca, f.categoria].filter(Boolean).join(" · ")}
+          </p>
+          <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-muted-foreground bg-muted/60 px-2.5 py-0.5 rounded-full border border-border">
+            <Sparkles className="h-3 w-3 text-primary" /> Texto gerado por IA
+          </span>
+        </div>
+        <h1 className="text-2xl sm:text-3xl font-bold text-foreground">{f.nome}</h1>
+        <p className="text-xs text-muted-foreground mt-1">
           Atualizada em {new Date(f.atualizadoEm).toLocaleDateString("pt-BR")}
         </p>
       </div>
-      <section className={box}>
-        <h2 className="mb-1 flex items-center gap-2 text-lg font-semibold">
-          <Flame className="h-5 w-5 text-primary" />
-          Por que está em alta
-        </h2>
-        <p className="text-muted-foreground">{f.porQueFamoso}</p>
-        <p className="mt-2 text-xs italic text-muted-foreground">
-          Gerado por IA, pode conter erros. Confira as fontes.
-        </p>
-      </section>
-      <section className={box}>
-        <h2 className="mb-2 text-lg font-semibold">Quem usa / recomenda</h2>
-        {f.quemUsa.length ? (
-          <ul className="space-y-1">
-            {f.quemUsa.map((r) => (
-              <li key={r.url + r.nome}>
-                <b>{r.nome}</b>{" "}
-                <a
-                  href={r.url}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="text-sm text-link underline"
-                >
-                  fonte: {r.titulo || "ver"}
-                </a>
-              </li>
+
+      {/* Depoimentos com fonte OU Descrição curta (até 3 frases) persuasiva e verdadeira */}
+      {(f.depoimentos && f.depoimentos.length > 0) || (f.quemUsa && f.quemUsa.length > 0) ? (
+        <section className={box}>
+          <h2 className="mb-2.5 text-base sm:text-lg font-semibold flex items-center gap-2 text-foreground">
+            <Sparkles className="h-4.5 w-4.5 text-primary" />
+            Depoimentos com fonte
+          </h2>
+          <div className="space-y-2.5">
+            {(f.depoimentos || f.quemUsa).map((r, i) => (
+              <div
+                key={r.url + r.nome + i}
+                className="rounded-2xl bg-muted/40 p-3.5 border border-border space-y-1.5"
+              >
+                <div className="flex items-center justify-between gap-2">
+                  <p className="text-xs font-bold text-foreground">{r.nome}</p>
+                  <a
+                    href={r.url}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex items-center gap-1 text-[11px] font-semibold text-link hover:underline shrink-0"
+                  >
+                    <span>Fonte</span> <ExternalLink className="h-3 w-3" />
+                  </a>
+                </div>
+                {r.texto && (
+                  <p className="text-xs text-muted-foreground italic">&ldquo;{r.texto}&rdquo;</p>
+                )}
+                {r.titulo && r.titulo !== r.texto && (
+                  <p className="text-[11px] text-muted-foreground/80">{r.titulo}</p>
+                )}
+              </div>
             ))}
-          </ul>
-        ) : (
-          <p className="text-muted-foreground">Sem informação confirmada.</p>
-        )}
-      </section>
+          </div>
+        </section>
+      ) : (
+        <section className={box}>
+          <h2 className="mb-1 text-base sm:text-lg font-semibold flex items-center gap-2 text-foreground">
+            <Sparkles className="h-4.5 w-4.5 text-primary" />
+            Sobre o produto
+          </h2>
+          <p className="text-sm text-muted-foreground leading-relaxed">
+            {f.descricao || f.porQueFamoso}
+          </p>
+        </section>
+      )}
+
+      {/* Prós e Contras */}
       {(f.pros.length > 0 || f.contras.length > 0) && (
         <div className="grid grid-cols-2 gap-3">
-          <section className="rounded-2xl bg-success p-4 text-success-foreground">
-            <h2 className="mb-1 font-semibold">Prós</h2>
+          <section className="rounded-2xl bg-success/20 p-4 text-success-foreground border border-success/30">
+            <h2 className="mb-1.5 font-bold text-sm">Prós</h2>
             {f.pros.map((x) => (
-              <p key={x} className="flex gap-1 text-sm">
-                <Plus className="h-4 w-4 shrink-0" />
-                {x}
+              <p key={x} className="flex gap-1.5 text-xs text-foreground py-0.5">
+                <Plus className="h-3.5 w-3.5 text-success shrink-0 mt-0.5" />
+                <span>{x}</span>
               </p>
             ))}
           </section>
-          <section className="rounded-2xl bg-secondary p-4 text-secondary-foreground">
-            <h2 className="mb-1 font-semibold">Contras</h2>
+          <section className="rounded-2xl bg-secondary p-4 text-secondary-foreground border border-border">
+            <h2 className="mb-1.5 font-bold text-sm">Contras</h2>
             {f.contras.map((x) => (
-              <p key={x} className="flex gap-1 text-sm">
-                <Minus className="h-4 w-4 shrink-0" />
-                {x}
+              <p key={x} className="flex gap-1.5 text-xs text-foreground py-0.5">
+                <Minus className="h-3.5 w-3.5 text-primary shrink-0 mt-0.5" />
+                <span>{x}</span>
               </p>
             ))}
           </section>
         </div>
       )}
-      {f.ondeComprar.length > 0 && (
-        <section className={box}>
-          <h2 className="mb-2 text-lg font-semibold">Onde comprar</h2>
-          <div className="grid gap-2">
-            {f.ondeComprar.map((s) => (
-              <a
-                key={s.url}
-                href={s.url}
-                target="_blank"
-                rel="noreferrer"
-                className="flex items-center justify-between rounded-full bg-primary px-5 py-3 font-semibold text-primary-foreground"
-              >
-                {s.loja} <ExternalLink className="h-4 w-4" />
-              </a>
-            ))}
-          </div>
-        </section>
-      )}
+
+      {/* Onde comprar: Amazon.com.br, Mercado Livre, AliExpress e Shopee */}
       <section className={box}>
-        <h2 className="mb-2 text-lg font-semibold">Fontes</h2>
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="text-base sm:text-lg font-bold text-foreground">Onde comprar</h2>
+          <span className="text-[11px] text-muted-foreground">Busca nos marketplaces</span>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+          {[
+            {
+              name: "Amazon.com.br",
+              url: `https://www.amazon.com.br/s?k=${encodeURIComponent(`${f.marca} ${f.nome}`.trim())}`,
+              tag: "Amazon",
+            },
+            {
+              name: "Mercado Livre",
+              url: `https://lista.mercadolivre.com.br/${encodeURIComponent(`${f.marca} ${f.nome}`.trim())}`,
+              tag: "Mercado Livre",
+            },
+            {
+              name: "AliExpress",
+              url: `https://www.aliexpress.com/wholesale?SearchText=${encodeURIComponent(`${f.marca} ${f.nome}`.trim())}`,
+              tag: "AliExpress",
+            },
+            {
+              name: "Shopee",
+              url: `https://shopee.com.br/search?keyword=${encodeURIComponent(`${f.marca} ${f.nome}`.trim())}`,
+              tag: "Shopee",
+            },
+          ].map((store) => (
+            <a
+              key={store.name}
+              href={store.url}
+              target="_blank"
+              rel="sponsored noopener"
+              className="flex items-center justify-between rounded-2xl border border-border bg-card p-3.5 text-xs font-bold text-foreground shadow-xs transition hover:border-primary/50 hover:bg-muted/60 active:scale-[0.98]"
+            >
+              <span>{store.name}</span>
+              <ExternalLink className="h-4 w-4 text-primary shrink-0" />
+            </a>
+          ))}
+        </div>
+
+        <p className="mt-3 text-center text-[11px] text-muted-foreground">
+          Podemos receber comissão por compras feitas pelos links.
+        </p>
+      </section>
+
+      {/* Fontes consultadas */}
+      <section className={box}>
+        <h2 className="mb-2 text-base font-semibold text-foreground">Fontes consultadas</h2>
         {f.fontes.length ? (
-          <ul className="space-y-1">
+          <ul className="space-y-1.5">
             {f.fontes.map((s) => (
               <li key={s.url}>
                 <a
                   href={s.url}
                   target="_blank"
                   rel="noreferrer"
-                  className="inline-flex items-center gap-1 text-sm text-link underline"
+                  className="inline-flex items-center gap-1.5 text-xs text-link hover:underline break-all"
                 >
-                  {s.titulo} <ExternalLink className="h-3 w-3" />
+                  <ExternalLink className="h-3 w-3 shrink-0" />
+                  <span>{s.titulo}</span>
                 </a>
               </li>
             ))}
           </ul>
         ) : (
-          <p className="text-muted-foreground">Sem informação confirmada.</p>
+          <p className="text-xs text-muted-foreground">Sem informação confirmada.</p>
         )}
       </section>
 

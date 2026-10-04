@@ -40,16 +40,16 @@ function HomePage() {
 
     addSearch(query);
     navigate({
-      to: "/buscar",
-      search: { q: query },
+      to: "/ficha",
+      search: { nome: query },
     });
   };
 
   const handleHistoryClick = (item: string) => {
     addSearch(item);
     navigate({
-      to: "/buscar",
-      search: { q: item },
+      to: "/ficha",
+      search: { nome: item },
     });
   };
 

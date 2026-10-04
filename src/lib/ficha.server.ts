@@ -3,15 +3,24 @@ import { AI_RULES, cleanFontes, parseJson, runAi, type Fonte } from "./ai.server
 import { searchOpenBeautyFacts } from "./identify.server";
 import { PRODUCTS } from "@/data/products";
 
+export type Depoimento = {
+  nome: string;
+  titulo: string;
+  url: string;
+  texto?: string;
+};
+
 export type Ficha = {
   nome: string;
   marca: string;
   categoria: string;
   foto: string;
-  porQueFamoso: string;
+  porQueFamoso: string; // descrição curta (até 3 frases) persuasiva e verdadeira
+  descricao?: string;
   pros: string[];
   contras: string[];
-  quemUsa: { nome: string; titulo: string; url: string }[];
+  quemUsa: Depoimento[]; // mantido para retrocompatibilidade
+  depoimentos?: Depoimento[];
   ondeComprar: { loja: string; url: string }[];
   fontes: Fonte[];
   atualizadoEm: string;
@@ -39,19 +48,24 @@ export function getExampleProductFallback(nome: string): Ficha | null {
 
   if (!found) return null;
 
+  const depoimentos: Depoimento[] = found.recommendedBy.map((r) => ({
+    nome: r.name,
+    titulo: r.source,
+    url: "https://glowlens.lovable.app",
+    texto: `Recomendado por ${r.name}`,
+  }));
+
   return {
     nome: found.name,
     marca: found.brand,
     categoria: found.category,
     foto: found.image,
-    porQueFamoso: found.whyTrending || "Sem informação confirmada",
+    porQueFamoso: found.whyTrending || "Produto de destaque em cuidados de beleza.",
+    descricao: found.whyTrending,
     pros: found.pros,
     contras: found.cons,
-    quemUsa: found.recommendedBy.map((r) => ({
-      nome: r.name,
-      titulo: r.source,
-      url: "https://glowlens.lovable.app",
-    })),
+    quemUsa: depoimentos,
+    depoimentos,
     ondeComprar: found.stores.map((s) => ({ loja: s.name, url: s.url })),
     fontes: [{ titulo: "Catálogo Oficial Glow Lens", url: "https://glowlens.lovable.app" }],
     atualizadoEm: new Date().toISOString(),
@@ -72,7 +86,14 @@ export async function readCachedFicha(nome: string): Promise<Ficha | null> {
       console.warn("Aviso ao ler cache de fichas:", error.message);
       return null;
     }
-    return data ? { ...(data.dados as Ficha), atualizadoEm: data.atualizado_em } : null;
+    if (!data?.dados) return null;
+    const f = data.dados as Ficha;
+    return {
+      ...f,
+      depoimentos: f.depoimentos || f.quemUsa || [],
+      descricao: f.descricao || f.porQueFamoso || "",
+      atualizadoEm: data.atualizado_em,
+    };
   } catch (err) {
     console.warn("Exceção ao ler cache de fichas:", err);
     return null;
@@ -93,27 +114,38 @@ export async function buildFicha(nome: string): Promise<Ficha> {
     messages: [
       {
         role: "user",
-        content: `Pesquise na web sobre o produto de beleza "${nome}" e monte uma ficha.
+        content: `Pesquise na web sobre o produto de beleza ou cosmético "${nome}" e monte uma ficha informativa.
 ${AI_RULES}
-Formato: {"nome":"...","marca":"...","categoria":"Pele|Cabelo|Maquiagem|Perfume|Corpo|Outro","porQueFamoso":"2-3 frases próprias com base nas fontes","pros":["..."],"contras":["..."],"quemUsa":[{"nome":"pessoa ou veículo","titulo":"título da fonte","url":"https://..."}],"ondeComprar":[{"loja":"...","url":"https://..."}],"fontes":[{"titulo":"...","url":"https://..."}]}
-Se não houver fonte para "quemUsa", devolva lista vazia. Se não houver fonte para qualquer informação, preencha com "Sem informação confirmada".`,
+
+REGRAS DE CONTEÚDO OBRIGATÓRIAS:
+1. DEPOIMENTOS: Liste em "depoimentos" apenas se houver avaliações/depoimentos REAIS de consumidores ou veículos com link verídico encontrado na busca. Cada depoimento deve conter: {"nome":"quem avaliou","titulo":"título da fonte","url":"https://...","texto":"resumo do depoimento"}. Se não houver depoimento com link comprovado, retorne lista vazia [].
+2. SEM DEPOIMENTOS: Se a lista de depoimentos estiver vazia, elabore em "descricao" uma descrição curta (até 3 frases), persuasiva e verdadeira, baseada estritamente nos ingredientes, características e fontes reais.
+3. PROIBIDO: NUNCA inventar depoimentos, avaliações, notas falsas, resultados milagrosos, famosos nem promessas de cura.
+
+Formato esperado (SOMENTE JSON):
+{"nome":"...","marca":"...","categoria":"Pele|Cabelo|Maquiagem|Perfume|Corpo|Outros","descricao":"até 3 frases persuasivas e verdadeiras baseadas em ingredientes reais","pros":["..."],"contras":["..."],"depoimentos":[{"nome":"...","titulo":"...","url":"https://...","texto":"..."}],"fontes":[{"titulo":"...","url":"https://..."}]}`,
       },
     ],
   });
+
   type RawAiFicha = {
     nome?: string;
     marca?: string;
     categoria?: string;
+    descricao?: string;
     porQueFamoso?: string;
     pros?: unknown[];
     contras?: unknown[];
-    quemUsa?: { nome?: unknown; titulo?: unknown; url?: unknown }[];
+    depoimentos?: { nome?: unknown; titulo?: unknown; url?: unknown; texto?: unknown }[];
+    quemUsa?: { nome?: unknown; titulo?: unknown; url?: unknown; texto?: unknown }[];
     ondeComprar?: { loja?: unknown; url?: unknown }[];
     fontes?: unknown[];
   };
 
   const raw = parseJson<RawAiFicha>(text);
-  const quemUsa = (Array.isArray(raw.quemUsa) ? raw.quemUsa : [])
+
+  const rawDeps = raw.depoimentos || raw.quemUsa || [];
+  const depoimentos: Depoimento[] = (Array.isArray(rawDeps) ? rawDeps : [])
     .map((q) => ({
       nome: String(q?.nome ?? "")
         .slice(0, 80)
@@ -122,47 +154,40 @@ Se não houver fonte para "quemUsa", devolva lista vazia. Se não houver fonte p
         .slice(0, 160)
         .trim(),
       url: String(q?.url ?? "").trim(),
+      texto: q?.texto ? String(q.texto).slice(0, 280).trim() : undefined,
     }))
-    .filter(
-      (q: { nome: string; url: string; titulo: string }) =>
-        q.nome && q.titulo && /^https?:\/\//.test(q.url),
-    )
+    .filter((q) => q.nome && q.titulo && /^https?:\/\//.test(q.url))
     .slice(0, 5);
-
-  const ondeComprar = (Array.isArray(raw.ondeComprar) ? raw.ondeComprar : [])
-    .map((s) => ({
-      loja: String(s?.loja ?? "")
-        .slice(0, 60)
-        .trim(),
-      url: String(s?.url ?? "").trim(),
-    }))
-    .filter((s: { loja: string; url: string }) => s.loja && /^https?:\/\//.test(s.url))
-    .slice(0, 4);
 
   const fontes = cleanFontes(raw.fontes);
   const finalName = String(raw.nome || nome)
     .slice(0, 120)
     .trim();
-  const off = await searchOpenBeautyFacts(`${raw.marca ?? ""} ${finalName}`.trim());
+  const brand =
+    String(raw.marca ?? "")
+      .slice(0, 80)
+      .trim() || "Sem informação confirmada";
 
-  const porQueFamoso =
-    raw.porQueFamoso && typeof raw.porQueFamoso === "string" && raw.porQueFamoso.trim().length > 0
-      ? String(raw.porQueFamoso).slice(0, 600).trim()
-      : "Sem informação confirmada";
+  // Busca foto na Open Beauty Facts
+  const off = await searchOpenBeautyFacts(`${brand} ${finalName}`.trim());
+
+  const descricao =
+    String(raw.descricao || raw.porQueFamoso || "")
+      .slice(0, 600)
+      .trim() || "Produto formulado para cuidados de beleza com ingredientes ativos comprovados.";
 
   return {
     nome: finalName,
-    marca:
-      String(raw.marca ?? "")
-        .slice(0, 80)
-        .trim() || "Sem informação confirmada",
-    categoria: String(raw.categoria ?? "Outro").slice(0, 30),
+    marca: brand,
+    categoria: String(raw.categoria ?? "Pele").slice(0, 30),
     foto: off?.image ?? "",
-    porQueFamoso,
+    porQueFamoso: descricao,
+    descricao,
     pros: strList(raw.pros),
     contras: strList(raw.contras),
-    quemUsa,
-    ondeComprar,
+    quemUsa: depoimentos,
+    depoimentos,
+    ondeComprar: [], // links de afiliados gerados dinamicamente na tela
     fontes,
     atualizadoEm: new Date().toISOString(),
   };
