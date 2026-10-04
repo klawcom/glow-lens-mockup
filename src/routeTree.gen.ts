@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AdmRouteImport } from './routes/adm'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as BuscarRouteImport } from './routes/buscar'
 import { Route as EscanearRouteImport } from './routes/escanear'
@@ -23,6 +24,11 @@ import { Route as ApiPublicCronTrendingRouteImport } from './routes/api/public/c
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdmRoute = AdmRouteImport.update({
+  id: '/adm',
+  path: '/adm',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AdminRoute = AdminRouteImport.update({
@@ -73,6 +79,7 @@ const ApiPublicCronTrendingRoute = ApiPublicCronTrendingRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/adm': typeof AdmRoute
   '/admin': typeof AdminRoute
   '/buscar': typeof BuscarRoute
   '/escanear': typeof EscanearRoute
@@ -85,6 +92,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/adm': typeof AdmRoute
   '/admin': typeof AdminRoute
   '/buscar': typeof BuscarRoute
   '/escanear': typeof EscanearRoute
@@ -98,6 +106,7 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/adm': typeof AdmRoute
   '/admin': typeof AdminRoute
   '/buscar': typeof BuscarRoute
   '/escanear': typeof EscanearRoute
@@ -112,6 +121,7 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/adm'
     | '/admin'
     | '/buscar'
     | '/escanear'
@@ -124,6 +134,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/adm'
     | '/admin'
     | '/buscar'
     | '/escanear'
@@ -136,6 +147,7 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
+    | '/adm'
     | '/admin'
     | '/buscar'
     | '/escanear'
@@ -149,6 +161,7 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AdmRoute: typeof AdmRoute
   AdminRoute: typeof AdminRoute
   BuscarRoute: typeof BuscarRoute
   EscanearRoute: typeof EscanearRoute
@@ -167,6 +180,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/adm': {
+      id: '/adm'
+      path: '/adm'
+      fullPath: '/adm'
+      preLoaderRoute: typeof AdmRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/admin': {
@@ -237,6 +257,7 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AdmRoute: AdmRoute,
   AdminRoute: AdminRoute,
   BuscarRoute: BuscarRoute,
   EscanearRoute: EscanearRoute,
