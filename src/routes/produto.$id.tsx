@@ -1,9 +1,11 @@
 // Tela 4 — Ficha do produto.
 import { createFileRoute, Link, notFound } from "@tanstack/react-router";
+import { useState } from "react";
 import { ArrowLeft, ExternalLink, Heart, Minus, Plus, Flame } from "lucide-react";
 import { getProduct } from "@/data/products";
 import { Stars } from "@/components/Stars";
-import { useFavorites } from "@/lib/favorites";
+import { useFavorites, removeFavorite } from "@/lib/favorites";
+import { CategoryPickerModal } from "@/components/CategoryPickerModal";
 
 export const Route = createFileRoute("/produto/$id")({
   loader: ({ params }) => {
@@ -27,12 +29,13 @@ export const Route = createFileRoute("/produto/$id")({
 
 function ProductPage() {
   const { product: p } = Route.useLoaderData();
-  const { isFavorite, toggle } = useFavorites();
+  const [showCategoryPicker, setShowCategoryPicker] = useState(false);
+  const { isFavorite, addFavorite, getCategory } = useFavorites();
   const fav = isFavorite(p.id);
   const box = "rounded-2xl bg-card p-4 shadow-card";
 
   return (
-    <div className="space-y-4 pt-5">
+    <div className="space-y-4 pt-5 pb-20">
       <div className="flex justify-between">
         <Link
           to="/"
@@ -42,13 +45,37 @@ function ProductPage() {
           <ArrowLeft className="h-5 w-5" />
         </Link>
         <button
-          onClick={() => toggle(p.id)}
+          onClick={() => {
+            if (fav) {
+              removeFavorite(p.id);
+            } else {
+              setShowCategoryPicker(true);
+            }
+          }}
           aria-label="Favoritar"
-          className="grid h-11 w-11 place-items-center rounded-full bg-card text-primary shadow-card"
+          className="grid h-11 w-11 place-items-center rounded-full bg-card text-primary shadow-card cursor-pointer"
         >
-          <Heart className={`h-5 w-5 ${fav ? "fill-current" : ""}`} />
+          <Heart
+            className={`h-5 w-5 ${fav ? "fill-primary text-primary" : "text-muted-foreground"}`}
+          />
         </button>
       </div>
+
+      <CategoryPickerModal
+        isOpen={showCategoryPicker}
+        onClose={() => setShowCategoryPicker(false)}
+        productName={p.name}
+        currentCategory={getCategory(p.id)}
+        onSelect={(cat) => {
+          addFavorite({
+            id: p.id,
+            nome: p.name,
+            marca: p.brand,
+            foto: p.image,
+            categoria: cat,
+          });
+        }}
+      />
       <img
         src={p.image}
         alt={p.name}

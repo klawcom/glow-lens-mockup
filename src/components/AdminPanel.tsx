@@ -1,19 +1,12 @@
-// Painel Administrativo do Glow Lens: Gestão do Dono, Login Google/Gmail e Métricas
 import { useEffect, useState } from "react";
 import { Link } from "@tanstack/react-router";
-import { useServerFn } from "@tanstack/react-start";
 import {
   ShieldCheck,
-  RefreshCw,
-  Loader2,
   Mail,
   Lock,
   LogOut,
-  ExternalLink,
   ChevronDown,
   ChevronUp,
-  Sparkles,
-  TrendingUp,
   Database,
   Cpu,
   CheckCircle2,
@@ -23,7 +16,6 @@ import {
 } from "lucide-react";
 import type { Session } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
-import { refreshTrendingNow } from "@/lib/identify.functions";
 import { PageHeader } from "@/components/PageHeader";
 import { APP_CONFIG } from "@/config/app";
 
@@ -50,17 +42,6 @@ function GoogleIcon({ className = "h-5 w-5" }: { className?: string }) {
   );
 }
 
-interface TrendingItem {
-  id: string;
-  nome: string;
-  marca: string;
-  categoria: string;
-  posicao: number;
-  por_que: string;
-  foto: string | null;
-  atualizado_em: string;
-}
-
 export function AdminPanel({ currentPath = "/adm" }: { currentPath?: string }) {
   const [session, setSession] = useState<Session | null>(null);
   const [email, setEmail] = useState("");
@@ -71,16 +52,9 @@ export function AdminPanel({ currentPath = "/adm" }: { currentPath?: string }) {
   const [copied, setCopied] = useState(false);
 
   // Dados do painel administrativo
-  const [trendingList, setTrendingList] = useState<TrendingItem[]>([]);
   const [fichasCount, setFichasCount] = useState<number>(0);
   const [aiUsageCount, setAiUsageCount] = useState<number>(0);
-  const [jobStatus, setJobStatus] = useState<{
-    ultimo_status: string | null;
-    atualizado_em: string | null;
-  } | null>(null);
   const [loadingData, setLoadingData] = useState(false);
-
-  const refresh = useServerFn(refreshTrendingNow);
 
   // Obter a URL base atual para redirecionamento do OAuth
   const getRedirectUrl = () => {
@@ -161,27 +135,11 @@ export function AdminPanel({ currentPath = "/adm" }: { currentPath?: string }) {
   const loadDashboardData = async () => {
     setLoadingData(true);
     try {
-      // Carregar produtos em alta
-      const { data: produtos } = await supabase
-        .from("produtos_em_alta")
-        .select("id, nome, marca, categoria, posicao, por_que, foto, atualizado_em")
-        .order("posicao", { ascending: true });
-
-      if (produtos) setTrendingList(produtos as TrendingItem[]);
-
       // Carregar total de fichas
       const { count: fCount } = await supabase
         .from("fichas")
         .select("id", { count: "exact", head: true });
       if (typeof fCount === "number") setFichasCount(fCount);
-
-      // Carregar status do job
-      const { data: jobs } = await supabase
-        .from("job_status")
-        .select("ultimo_status, atualizado_em")
-        .eq("nome", "trending_updater")
-        .maybeSingle();
-      if (jobs) setJobStatus(jobs);
 
       // Carregar consultas de IA
       const { count: aiCount } = await supabase
@@ -314,39 +272,6 @@ export function AdminPanel({ currentPath = "/adm" }: { currentPath?: string }) {
       }
     } catch {
       setMsg({ type: "error", text: "Erro ao processar autenticação." });
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  // Executar atualização imediata do catálogo
-  const handleRefreshTrending = async () => {
-    setBusy(true);
-    setMsg({
-      type: "info",
-      text: "Atualizando produtos em alta... Isso pode levar alguns minutos.",
-    });
-    try {
-      const r = await refresh();
-      if (r.ok) {
-        setMsg({ type: "success", text: `Pronto! ${r.message}` });
-        await loadDashboardData();
-      } else {
-        setMsg({ type: "error", text: r.message });
-      }
-    } catch (err: unknown) {
-      const errStr = String((err as { message?: string })?.message || "");
-      if (errStr.includes("Unauthorized") || errStr.includes("dono")) {
-        setMsg({
-          type: "error",
-          text: `Apenas o dono do app (${APP_CONFIG.ownerEmail}) pode atualizar.`,
-        });
-      } else {
-        setMsg({
-          type: "error",
-          text: "Não foi possível atualizar agora. A lista anterior foi mantida.",
-        });
-      }
     } finally {
       setBusy(false);
     }
@@ -569,58 +494,12 @@ export function AdminPanel({ currentPath = "/adm" }: { currentPath?: string }) {
                 </button>
               </div>
 
-              {/* Botão de Ação Principal: Atualizar Agora */}
-              <div className="rounded-2xl bg-secondary/40 p-4 border border-border">
-                <div className="flex items-center justify-between gap-3 mb-2">
-                  <div>
-                    <h3 className="font-bold text-foreground text-sm flex items-center gap-1.5">
-                      <Sparkles className="h-4 w-4 text-primary" /> Sincronizar Produtos em Alta
-                    </h3>
-                    <p className="text-xs text-muted-foreground mt-0.5">
-                      Consulta tendências e atualiza os produtos da página inicial.
-                    </p>
-                  </div>
-                </div>
-
-                <button
-                  type="button"
-                  className={btnPrimary}
-                  disabled={busy || !isOwner}
-                  onClick={handleRefreshTrending}
-                >
-                  {busy ? (
-                    <Loader2 className="h-5 w-5 animate-spin" />
-                  ) : (
-                    <RefreshCw className="h-5 w-5" />
-                  )}
-                  {busy ? "Sincronizando..." : "Atualizar agora"}
-                </button>
-
-                {!isOwner && (
-                  <p className="text-[11px] text-destructive font-semibold mt-2 text-center">
-                    Apenas o dono ({APP_CONFIG.ownerEmail}) possui permissão para atualizar o
-                    catálogo.
-                  </p>
-                )}
-              </div>
-
               {/* Métricas do Sistema */}
               <div>
                 <h3 className="text-sm font-bold text-foreground mb-3 flex items-center gap-1.5">
                   <Database className="h-4 w-4 text-link" /> Indicadores do Sistema
                 </h3>
                 <div className="grid grid-cols-2 gap-3">
-                  <div className="rounded-2xl bg-muted/60 p-3.5 border border-border">
-                    <div className="flex items-center gap-2 text-primary mb-1">
-                      <TrendingUp className="h-4 w-4" />
-                      <span className="text-xs font-bold">Em Alta</span>
-                    </div>
-                    <div className="text-2xl font-extrabold text-foreground">
-                      {loadingData ? "..." : trendingList.length}
-                    </div>
-                    <p className="text-[11px] text-muted-foreground">Produtos no ranking</p>
-                  </div>
-
                   <div className="rounded-2xl bg-muted/60 p-3.5 border border-border">
                     <div className="flex items-center gap-2 text-link mb-1">
                       <Cpu className="h-4 w-4" />
@@ -629,70 +508,35 @@ export function AdminPanel({ currentPath = "/adm" }: { currentPath?: string }) {
                     <div className="text-2xl font-extrabold text-foreground">
                       {loadingData ? "..." : fichasCount}
                     </div>
-                    <p className="text-[11px] text-muted-foreground">Produtos salvos</p>
+                    <p className="text-[11px] text-muted-foreground">Produtos consultados</p>
+                  </div>
+
+                  <div className="rounded-2xl bg-muted/60 p-3.5 border border-border">
+                    <div className="flex items-center gap-2 text-primary mb-1">
+                      <CheckCircle2 className="h-4 w-4" />
+                      <span className="text-xs font-bold">Consultas IA</span>
+                    </div>
+                    <div className="text-2xl font-extrabold text-foreground">
+                      {loadingData ? "..." : aiUsageCount}
+                    </div>
+                    <p className="text-[11px] text-muted-foreground">Análises realizadas</p>
                   </div>
 
                   <div className="rounded-2xl bg-muted/60 p-3.5 border border-border col-span-2">
                     <div className="flex items-center justify-between">
                       <span className="text-xs font-semibold text-muted-foreground">
-                        Status do Job de Atualização:
+                        Modo de Operação:
                       </span>
                       <span className="inline-flex items-center gap-1 text-xs font-bold text-success-foreground bg-success/20 px-2 py-0.5 rounded-full">
-                        <CheckCircle2 className="h-3 w-3" />{" "}
-                        {jobStatus?.ultimo_status || "Pronto / Ativo"}
+                        <CheckCircle2 className="h-3 w-3" /> Busca Pura & Escaneamento
                       </span>
                     </div>
-                    {jobStatus?.atualizado_em && (
-                      <p className="text-[10px] text-muted-foreground mt-1">
-                        Última execução: {new Date(jobStatus.atualizado_em).toLocaleString("pt-BR")}
-                      </p>
-                    )}
+                    <p className="text-[10px] text-muted-foreground mt-1">
+                      App focado em busca rápida, leitura de código de barras e IA sob demanda.
+                    </p>
                   </div>
                 </div>
               </div>
-
-              {/* Lista dos Produtos em Alta Cadastrados */}
-              {trendingList.length > 0 && (
-                <div className="space-y-3 pt-2">
-                  <div className="flex items-center justify-between">
-                    <h3 className="text-sm font-bold text-foreground">
-                      Produtos em Alta no App ({trendingList.length})
-                    </h3>
-                    <Link
-                      to="/"
-                      className="text-xs font-semibold text-link flex items-center gap-1"
-                    >
-                      Ver no app <ExternalLink className="h-3 w-3" />
-                    </Link>
-                  </div>
-
-                  <div className="space-y-2 max-h-72 overflow-y-auto pr-1">
-                    {trendingList.map((item) => (
-                      <div
-                        key={item.id}
-                        className="flex items-center gap-3 rounded-2xl bg-muted/40 p-3 border border-border"
-                      >
-                        <span className="grid h-7 w-7 place-items-center rounded-full bg-primary/20 text-xs font-extrabold text-primary shrink-0">
-                          #{item.posicao}
-                        </span>
-                        {item.foto && (
-                          <img
-                            src={item.foto}
-                            alt={item.nome}
-                            className="h-10 w-10 rounded-xl object-cover border border-border shrink-0"
-                          />
-                        )}
-                        <div className="min-w-0 flex-1">
-                          <p className="text-xs font-bold text-foreground truncate">{item.nome}</p>
-                          <p className="text-[11px] text-muted-foreground truncate">
-                            {item.marca} • {item.categoria}
-                          </p>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
             </div>
           )}
 

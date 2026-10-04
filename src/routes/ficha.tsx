@@ -1,11 +1,23 @@
-// Ficha sob demanda (cache de 7 dias + IA com busca na web).
+// Ficha sob demanda (cache de 7 dias + IA com busca na web) + suporte a favoritar por categoria
 import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { ArrowLeft, ExternalLink, Flame, Loader2, Minus, Plus, AlertCircle } from "lucide-react";
+import {
+  ArrowLeft,
+  ExternalLink,
+  Flame,
+  Loader2,
+  Minus,
+  Plus,
+  AlertCircle,
+  Heart,
+} from "lucide-react";
+import { useState } from "react";
 import { getFicha } from "@/lib/identify.functions";
 import { getDeviceId } from "@/lib/device";
 import { categoryImage } from "@/data/category-images";
+import { useFavorites, type FavoriteCategory } from "@/lib/favorites";
+import { CategoryPickerModal } from "@/components/CategoryPickerModal";
 
 export const Route = createFileRoute("/ficha")({
   validateSearch: (s: Record<string, unknown>): { nome: string } => ({
@@ -32,6 +44,9 @@ function FichaPage() {
   const { nome } = Route.useSearch();
   const router = useRouter();
   const fetchFicha = useServerFn(getFicha);
+  const { isFavorite, addFavorite, removeFavorite, getCategory } = useFavorites();
+  const [pickerOpen, setPickerOpen] = useState(false);
+
   const q = useQuery({
     queryKey: ["ficha", nome],
     enabled: nome.length >= 2,
@@ -41,19 +56,45 @@ function FichaPage() {
   });
   const box = "rounded-2xl bg-card p-4 shadow-card";
 
+  const isFav = isFavorite(nome);
+
   const back = (
-    <button
-      onClick={() => router.history.back()}
-      aria-label="Voltar"
-      className="grid h-11 w-11 place-items-center rounded-full bg-card shadow-card"
-    >
-      <ArrowLeft className="h-5 w-5" />
-    </button>
+    <div className="flex items-center justify-between pb-1">
+      <button
+        onClick={() => router.history.back()}
+        aria-label="Voltar"
+        className="grid h-11 w-11 place-items-center rounded-full bg-card shadow-card hover:bg-muted transition"
+      >
+        <ArrowLeft className="h-5 w-5" />
+      </button>
+
+      {q.data?.status === "ok" && (
+        <button
+          type="button"
+          onClick={() => {
+            if (isFav) {
+              removeFavorite(nome);
+            } else {
+              setPickerOpen(true);
+            }
+          }}
+          aria-label={isFav ? "Remover dos favoritos" : "Salvar nos favoritos"}
+          title={isFav ? "Remover dos favoritos" : "Salvar nos favoritos"}
+          className={`grid h-11 w-11 place-items-center rounded-full transition shadow-card cursor-pointer ${
+            isFav
+              ? "bg-primary text-primary-foreground shadow-soft"
+              : "bg-card text-foreground hover:bg-muted"
+          }`}
+        >
+          <Heart className={`h-5 w-5 ${isFav ? "fill-current" : ""}`} />
+        </button>
+      )}
+    </div>
   );
 
   if (q.isPending || q.isFetching)
     return (
-      <div className="space-y-4 pt-5">
+      <div className="space-y-4 pt-2">
         {back}
         <div
           className={`${box} flex flex-col items-center gap-3 py-10 text-center`}
@@ -71,7 +112,7 @@ function FichaPage() {
   const res = q.data;
   if (!nome || q.isError || !res || res.status === "error")
     return (
-      <div className="space-y-4 pt-5">
+      <div className="space-y-4 pt-2">
         {back}
         <div className={`${box} space-y-3 text-center`}>
           <AlertCircle className="mx-auto h-8 w-8 text-primary" />
@@ -93,8 +134,19 @@ function FichaPage() {
     );
 
   const f = res.ficha;
+
+  const handleSelectCategory = (cat: FavoriteCategory) => {
+    addFavorite({
+      id: f.nome,
+      nome: f.nome,
+      marca: f.marca,
+      foto: f.foto || categoryImage(f.categoria),
+      categoria: cat,
+    });
+  };
+
   return (
-    <div className="space-y-4 pt-5">
+    <div className="space-y-4 pt-2 pb-24">
       {back}
       <img
         src={f.foto || categoryImage(f.categoria)}
@@ -203,6 +255,15 @@ function FichaPage() {
           <p className="text-muted-foreground">Sem informação confirmada.</p>
         )}
       </section>
+
+      {/* Modal de Escolha de Categoria para Salvar em Favoritos */}
+      <CategoryPickerModal
+        isOpen={pickerOpen}
+        onClose={() => setPickerOpen(false)}
+        onSelect={handleSelectCategory}
+        productName={f.nome}
+        currentCategory={getCategory(f.nome)}
+      />
     </div>
   );
 }

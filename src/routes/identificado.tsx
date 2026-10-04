@@ -50,7 +50,7 @@ function IdentifiedPage() {
   const brand = off?.brand || ai.brand;
 
   return (
-    <div className="space-y-4 pt-5">
+    <div className="space-y-4 pt-5 pb-24">
       <Link
         to="/escanear"
         aria-label="Voltar"
