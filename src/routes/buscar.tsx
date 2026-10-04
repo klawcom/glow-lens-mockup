@@ -8,27 +8,42 @@ import { ProductCard } from "@/components/ProductCard";
 import { PRODUCTS } from "@/data/products";
 
 export const Route = createFileRoute("/buscar")({
+  validateSearch: (search: Record<string, unknown>) => ({
+    q: typeof search?.q === "string" ? search.q : "",
+  }),
   head: () => ({
     meta: [
       { title: "Buscar produtos — Glow Lens" },
       { name: "description", content: "Busque produtos de beleza por nome, marca ou categoria." },
       { property: "og:title", content: "Buscar produtos — Glow Lens" },
-      { property: "og:description", content: "Busque produtos de beleza por nome, marca ou categoria." },
+      {
+        property: "og:description",
+        content: "Busque produtos de beleza por nome, marca ou categoria.",
+      },
     ],
   }),
   component: SearchPage,
 });
 
-const norm = (s: string) => s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+const norm = (s: string) =>
+  s
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase();
 
 function SearchPage() {
-  const [q, setQ] = useState("");
-  const results = PRODUCTS.filter((p) => norm(`${p.name} ${p.brand} ${p.category}`).includes(norm(q)));
+  const search = Route.useSearch();
+  const [q, setQ] = useState(search?.q || "");
+  const results = PRODUCTS.filter((p) =>
+    norm(`${p.name} ${p.brand} ${p.category}`).includes(norm(q)),
+  );
   return (
     <>
       <PageHeader title="Buscar" />
       <SearchBar value={q} onChange={setQ} autoFocus />
-      <p className="mb-3 mt-4 text-sm font-semibold text-muted-foreground">{results.length} resultado(s)</p>
+      <p className="mb-3 mt-4 text-sm font-semibold text-muted-foreground">
+        {results.length} resultado(s)
+      </p>
       {results.length ? (
         <div className="grid grid-cols-2 gap-3">
           {results.map((p) => (
@@ -36,7 +51,9 @@ function SearchPage() {
           ))}
         </div>
       ) : (
-        <p className="rounded-2xl bg-card p-6 text-center text-muted-foreground">Nada encontrado. Tente outra palavra.</p>
+        <p className="rounded-2xl bg-card p-6 text-center text-muted-foreground">
+          Nada encontrado. Tente outra palavra.
+        </p>
       )}
     </>
   );

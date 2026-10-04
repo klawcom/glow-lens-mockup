@@ -124,3 +124,38 @@
     display: none;
   }
 }
+
+/* Scanner styles */
+#glowlens-scanner {
+  width: 100% !important;
+  height: 100% !important;
+  border-radius: 1.5rem !important;
+  overflow: hidden !important;
+}
+#glowlens-scanner video {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover !important;
+  border-radius: 1.5rem !important;
+}
+#glowlens-scanner img[alt="Info icon"] {
+  display: none !important;
+}
+
+@keyframes scanline {
+  0% {
+    top: 12%;
+    opacity: 0.8;
+  }
+  50% {
+    top: 85%;
+    opacity: 1;
+  }
+  100% {
+    top: 12%;
+    opacity: 0.8;
+  }
+}
+.animate-scanline {
+  animation: scanline 2.2s ease-in-out infinite;
+}
