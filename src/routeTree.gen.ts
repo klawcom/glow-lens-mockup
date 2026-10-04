@@ -13,6 +13,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as BuscarRouteImport } from './routes/buscar'
 import { Route as EscanearRouteImport } from './routes/escanear'
 import { Route as FavoritosRouteImport } from './routes/favoritos'
+import { Route as IdentificadoRouteImport } from './routes/identificado'
 import { Route as SobreRouteImport } from './routes/sobre'
 import { Route as ProdutoIdRouteImport } from './routes/produto.$id'
 
@@ -36,6 +37,11 @@ const FavoritosRoute = FavoritosRouteImport.update({
   path: '/favoritos',
   getParentRoute: () => rootRouteImport,
 } as any)
+const IdentificadoRoute = IdentificadoRouteImport.update({
+  id: '/identificado',
+  path: '/identificado',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SobreRoute = SobreRouteImport.update({
   id: '/sobre',
   path: '/sobre',
@@ -52,6 +58,7 @@ export interface FileRoutesByFullPath {
   '/buscar': typeof BuscarRoute
   '/escanear': typeof EscanearRoute
   '/favoritos': typeof FavoritosRoute
+  '/identificado': typeof IdentificadoRoute
   '/sobre': typeof SobreRoute
   '/produto/$id': typeof ProdutoIdRoute
 }
@@ -60,6 +67,7 @@ export interface FileRoutesByTo {
   '/buscar': typeof BuscarRoute
   '/escanear': typeof EscanearRoute
   '/favoritos': typeof FavoritosRoute
+  '/identificado': typeof IdentificadoRoute
   '/sobre': typeof SobreRoute
   '/produto/$id': typeof ProdutoIdRoute
 }
@@ -69,21 +77,36 @@ export interface FileRoutesById {
   '/buscar': typeof BuscarRoute
   '/escanear': typeof EscanearRoute
   '/favoritos': typeof FavoritosRoute
+  '/identificado': typeof IdentificadoRoute
   '/sobre': typeof SobreRoute
   '/produto/$id': typeof ProdutoIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
-    '/' | '/buscar' | '/escanear' | '/favoritos' | '/sobre' | '/produto/$id'
+    | '/'
+    | '/buscar'
+    | '/escanear'
+    | '/favoritos'
+    | '/identificado'
+    | '/sobre'
+    | '/produto/$id'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/buscar' | '/escanear' | '/favoritos' | '/sobre' | '/produto/$id'
+  to:
+    | '/'
+    | '/buscar'
+    | '/escanear'
+    | '/favoritos'
+    | '/identificado'
+    | '/sobre'
+    | '/produto/$id'
   id:
     | '__root__'
     | '/'
     | '/buscar'
     | '/escanear'
     | '/favoritos'
+    | '/identificado'
     | '/sobre'
     | '/produto/$id'
   fileRoutesById: FileRoutesById
@@ -93,6 +116,7 @@ export interface RootRouteChildren {
   BuscarRoute: typeof BuscarRoute
   EscanearRoute: typeof EscanearRoute
   FavoritosRoute: typeof FavoritosRoute
+  IdentificadoRoute: typeof IdentificadoRoute
   SobreRoute: typeof SobreRoute
   ProdutoIdRoute: typeof ProdutoIdRoute
 }
@@ -127,6 +151,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof FavoritosRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/identificado': {
+      id: '/identificado'
+      path: '/identificado'
+      fullPath: '/identificado'
+      preLoaderRoute: typeof IdentificadoRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/sobre': {
       id: '/sobre'
       path: '/sobre'
@@ -149,6 +180,7 @@ const rootRouteChildren: RootRouteChildren = {
   BuscarRoute: BuscarRoute,
   EscanearRoute: EscanearRoute,
   FavoritosRoute: FavoritosRoute,
+  IdentificadoRoute: IdentificadoRoute,
   SobreRoute: SobreRoute,
   ProdutoIdRoute: ProdutoIdRoute,
 }
