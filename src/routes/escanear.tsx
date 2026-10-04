@@ -474,17 +474,17 @@ export function ScanPage() {
               <Camera className="h-10 w-10" />
             </div>
             <div>
-              <p className="text-xl font-bold text-foreground">Leitor Glow Lens</p>
+              <p className="text-xl font-bold text-foreground">Área da câmera</p>
               <p className="mt-1 text-sm text-muted-foreground">
-                Escaneie códigos de barras de cosméticos ou QR codes instantaneamente
+                Aponte para o produto ou toque no botão para iniciar
               </p>
             </div>
             <button
               onClick={startCamera}
-              className="inline-flex items-center gap-2 rounded-full bg-primary px-7 py-3.5 text-base font-bold text-primary-foreground shadow-soft transition hover:opacity-90 active:scale-95"
+              className="inline-flex items-center gap-2 rounded-full bg-primary px-8 py-3.5 text-base font-bold text-primary-foreground shadow-soft transition hover:opacity-90 active:scale-95"
             >
               <Camera className="h-5 w-5" />
-              Escanear com a câmera
+              Escanear
             </button>
           </div>
         </div>
