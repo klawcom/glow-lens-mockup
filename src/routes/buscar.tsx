@@ -8,7 +8,7 @@ import { ProductCard } from "@/components/ProductCard";
 import { PRODUCTS } from "@/data/products";
 
 export const Route = createFileRoute("/buscar")({
-  validateSearch: (search: Record<string, unknown>) => ({
+  validateSearch: (search: Record<string, unknown>): { q?: string } => ({
     q: typeof search?.["q"] === "string" ? (search["q"] as string) : undefined,
   }),
   head: () => ({
