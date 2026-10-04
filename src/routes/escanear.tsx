@@ -19,6 +19,7 @@ import {
   Sparkles,
   Search,
   AlertCircle,
+  AlertTriangle,
   Loader2,
   RefreshCw,
   Lightbulb,
@@ -85,6 +86,12 @@ type ViewState =
       code?: string;
       message: string;
       tips: string[];
+    }
+  | {
+      type: "unavailable";
+      title?: string;
+      message: string;
+      onRetry?: () => void;
     };
 
 export function ScanPage() {
@@ -170,6 +177,18 @@ export function ScanPage() {
           });
           return;
         }
+
+        if (res.status === "unavailable") {
+          setViewState({
+            type: "unavailable",
+            title: "Serviço Indisponível",
+            message:
+              res.message ||
+              "O serviço de identificação avançada está temporariamente indisponível.",
+            onRetry: () => handleBarcodeLookup(cleanCode),
+          });
+          return;
+        }
       } catch (err) {
         console.warn("Erro ao resolver código de barras:", err);
       }
@@ -230,6 +249,18 @@ export function ScanPage() {
             return;
           }
 
+          if (res.status === "unavailable") {
+            setViewState({
+              type: "unavailable",
+              title: "Serviço Indisponível",
+              message:
+                res.message ||
+                "O serviço de consulta de páginas externas está temporariamente indisponível.",
+              onRetry: () => handleQrLookup(cleanText),
+            });
+            return;
+          }
+
           setViewState({
             type: "not-found",
             code: cleanText,
@@ -245,13 +276,10 @@ export function ScanPage() {
           });
         } catch {
           setViewState({
-            type: "not-found",
-            code: cleanText,
-            message: "Não foi possível carregar as informações do link.",
-            tips: [
-              "Verifique sua conexão com a internet",
-              "Tente pesquisar digitando o nome do produto",
-            ],
+            type: "unavailable",
+            title: "Serviço Indisponível",
+            message: "Não foi possível carregar as informações do link no momento.",
+            onRetry: () => handleQrLookup(cleanText),
           });
         }
       } else {
@@ -342,6 +370,27 @@ export function ScanPage() {
         return;
       }
 
+      if (res.status === "unavailable") {
+        setViewState({
+          type: "unavailable",
+          title: "Serviço Indisponível",
+          message:
+            res.message ||
+            "O serviço de identificação visual por inteligência artificial está temporariamente indisponível.",
+        });
+        return;
+      }
+
+      if (res.status === "error") {
+        setViewState({
+          type: "unavailable",
+          title: "Falha na Identificação",
+          message:
+            res.message || "Ocorreu uma falha ao enviar a imagem para análise.",
+        });
+        return;
+      }
+
       // Se não identificou com certeza
       setViewState({
         type: "not-found",
@@ -355,12 +404,9 @@ export function ScanPage() {
       });
     } catch {
       setViewState({
-        type: "not-found",
-        message: "Não foi possível enviar a foto no momento.",
-        tips: [
-          "Verifique sua conexão com a internet e tente novamente",
-          "Ou busque digitando o nome do produto",
-        ],
+        type: "unavailable",
+        title: "Erro de Conexão",
+        message: "Não foi possível enviar a foto para processamento no momento.",
       });
     } finally {
       e.target.value = "";
@@ -404,6 +450,29 @@ export function ScanPage() {
         return;
       }
 
+      if (res.status === "unavailable") {
+        setViewState({
+          type: "unavailable",
+          title: "Serviço Indisponível",
+          message:
+            res.message ||
+            "O serviço de identificação por inteligência artificial está temporariamente indisponível.",
+          onRetry: () => startCamera(),
+        });
+        return;
+      }
+
+      if (res.status === "error") {
+        setViewState({
+          type: "unavailable",
+          title: "Falha na Análise",
+          message:
+            res.message || "Não foi possível processar a imagem da câmera com a inteligência artificial.",
+          onRetry: () => startCamera(),
+        });
+        return;
+      }
+
       setViewState({
         type: "not-found",
         message: "Não foi possível identificar o produto na foto capturada.",
@@ -416,9 +485,10 @@ export function ScanPage() {
       });
     } catch {
       setViewState({
-        type: "not-found",
-        message: "Erro ao processar a captura da câmera.",
-        tips: ["Tente novamente em instantes", "Ou busque pelo nome do produto"],
+        type: "unavailable",
+        title: "Erro de Conexão",
+        message: "Erro ao processar a captura da câmera com o servidor.",
+        onRetry: () => startCamera(),
       });
     }
   };
@@ -755,6 +825,76 @@ export function ScanPage() {
               className="flex-1 flex items-center justify-center gap-2 rounded-full border border-border bg-card py-3 text-xs font-bold text-foreground hover:bg-muted transition cursor-pointer"
             >
               <ImageUp className="h-4 w-4 text-primary" /> Enviar outra foto
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* TELA DE SERVIÇO INDISPONÍVEL */}
+      {viewState.type === "unavailable" && (
+        <div className="rounded-3xl bg-card p-6 shadow-card space-y-4 text-center border border-amber-500/30">
+          <div className="mx-auto grid h-14 w-14 place-items-center rounded-full bg-amber-500/15 text-amber-600 dark:text-amber-400">
+            <AlertTriangle className="h-7 w-7" />
+          </div>
+
+          <div>
+            <h2 className="text-lg font-bold text-foreground">
+              {viewState.title || "Serviço Indisponível"}
+            </h2>
+            <p className="mt-1 text-xs text-muted-foreground leading-relaxed">
+              {viewState.message}
+            </p>
+          </div>
+
+          <div className="rounded-2xl bg-amber-500/5 p-3.5 text-left border border-amber-500/15 text-xs text-muted-foreground space-y-1">
+            <span className="font-semibold text-foreground block">
+              Diferença entre não encontrado e serviço indisponível:
+            </span>
+            <p className="leading-relaxed">
+              O produto pode existir normalmente, mas a consulta inteligente (IA ou banco de dados externo) não respondeu a tempo ou está em manutenção.
+            </p>
+          </div>
+
+          {/* Campo de Busca Manual como Plano B */}
+          <div className="space-y-2 pt-1 text-left">
+            <label className="text-xs font-semibold text-foreground block">
+              Plano B: tente buscar diretamente pelo nome:
+            </label>
+            <div className="flex gap-2">
+              <input
+                type="text"
+                placeholder="Ex.: Hidratante Nivea..."
+                value={manualQuery}
+                onChange={(e) => setManualQuery(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && handleManualSearch()}
+                className="w-full rounded-full border-2 border-border bg-muted/60 px-4 py-2.5 text-xs text-foreground outline-none focus:border-primary"
+              />
+              <button
+                type="button"
+                onClick={handleManualSearch}
+                className="shrink-0 rounded-full bg-primary px-5 py-2.5 text-xs font-bold text-primary-foreground shadow-soft cursor-pointer"
+              >
+                Buscar
+              </button>
+            </div>
+          </div>
+
+          <div className="flex flex-col sm:flex-row gap-2 pt-2">
+            {viewState.onRetry && (
+              <button
+                type="button"
+                onClick={viewState.onRetry}
+                className="flex-1 flex items-center justify-center gap-2 rounded-full bg-primary py-3 text-xs font-bold text-primary-foreground shadow-soft transition hover:opacity-95 active:scale-95 cursor-pointer"
+              >
+                <RefreshCw className="h-4 w-4" /> Tentar novamente
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={resetToIdle}
+              className="flex-1 flex items-center justify-center gap-2 rounded-full border border-border bg-card py-3 text-xs font-bold text-foreground hover:bg-muted transition cursor-pointer"
+            >
+              Voltar ao leitor
             </button>
           </div>
         </div>

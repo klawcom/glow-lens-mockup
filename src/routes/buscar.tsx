@@ -1,11 +1,23 @@
 // Tela de Busca — Busca inteligente de produtos de beleza
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { useServerFn } from "@tanstack/react-start";
 import { useState, useEffect } from "react";
-import { Search, Sparkles, Heart, ExternalLink, Loader2, X, ArrowRight } from "lucide-react";
+import {
+  Search,
+  Sparkles,
+  Heart,
+  ExternalLink,
+  Loader2,
+  X,
+  ArrowRight,
+  Info,
+  AlertCircle,
+} from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { useSearchHistory } from "@/lib/search-history";
 import { useFavorites, type FavoriteCategory } from "@/lib/favorites";
 import { CategoryPickerModal } from "@/components/CategoryPickerModal";
+import { searchProductsQuery } from "@/lib/identify.functions";
 
 export const Route = createFileRoute("/buscar")({
   validateSearch: (search: Record<string, unknown>): { q?: string | undefined } => ({
@@ -41,6 +53,11 @@ export function SearchPage() {
   const [results, setResults] = useState<SearchProduct[]>([]);
   const [loading, setLoading] = useState(false);
   const [searched, setSearched] = useState(false);
+  const [isPartial, setIsPartial] = useState(false);
+  const [variationUsed, setVariationUsed] = useState("");
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  const searchServerFn = useServerFn(searchProductsQuery);
   const { addSearch } = useSearchHistory();
   const { isFavorite, addFavorite, removeFavorite, getCategory } = useFavorites();
 
@@ -53,7 +70,7 @@ export function SearchPage() {
     foto?: string | null;
   } | null>(null);
 
-  // Executa a busca na base aberta do Open Beauty Facts
+  // Executa a busca multifásica (até 3 variações com e sem marca, sem acentos)
   const runSearch = async (term: string) => {
     const cleanTerm = term.trim();
     if (!cleanTerm) return;
@@ -61,21 +78,52 @@ export function SearchPage() {
     addSearch(cleanTerm);
     setLoading(true);
     setSearched(true);
+    setErrorMessage(null);
+    setIsPartial(false);
+    setVariationUsed("");
 
     try {
-      const url = `https://world.openbeautyfacts.org/cgi/search.pl?search_terms=${encodeURIComponent(
-        cleanTerm,
-      )}&search_simple=1&action=process&json=1&page_size=12`;
+      // 1. Tenta a busca inteligente com variações via backend
+      const res = await searchServerFn({ data: { query: cleanTerm } });
+      if (res.status === "ok") {
+        setResults(
+          res.products.map((p) => ({
+            code: p.code,
+            product_name: p.name,
+            brands: p.brand,
+            categories: p.categories,
+            image_url: p.image,
+            image_front_small_url: p.image,
+          })),
+        );
+        setIsPartial(res.isPartial);
+        setVariationUsed(res.variationUsed);
+        return;
+      }
 
-      const response = await fetch(url, { headers: { Accept: "application/json" } });
-      if (!response.ok) throw new Error("Falha na busca");
-      const data = await response.json();
-      const products: SearchProduct[] = (data?.products || []).filter(
-        (p: SearchProduct) => p.product_name && p.product_name.trim().length > 0,
-      );
-      setResults(products);
+      if (res.status === "error" || (res as any).status === "unavailable") {
+        setErrorMessage(res.message || "Serviço temporariamente indisponível.");
+        setResults([]);
+        return;
+      }
     } catch {
-      setResults([]);
+      // 2. Fallback de rede direto no Open Beauty Facts
+      try {
+        const url = `https://world.openbeautyfacts.org/cgi/search.pl?search_terms=${encodeURIComponent(
+          cleanTerm,
+        )}&search_simple=1&action=process&json=1&page_size=12`;
+
+        const response = await fetch(url, { headers: { Accept: "application/json" } });
+        if (!response.ok) throw new Error("Falha na busca");
+        const data = await response.json();
+        const products: SearchProduct[] = (data?.products || []).filter(
+          (p: SearchProduct) => p.product_name && p.product_name.trim().length > 0,
+        );
+        setResults(products);
+      } catch {
+        setErrorMessage("Não foi possível conectar ao serviço de busca. Verifique sua conexão.");
+        setResults([]);
+      }
     } finally {
       setLoading(false);
     }
@@ -193,6 +241,17 @@ export function SearchPage() {
       {/* RESULTADOS DA BUSCA */}
       {!loading && searched && (
         <div className="space-y-3">
+          {/* AVISO DE RESULTADO PARCIAL */}
+          {isPartial && results.length > 0 && (
+            <div className="rounded-2xl bg-secondary/80 border border-border p-3.5 text-xs flex items-center gap-2.5 text-foreground shadow-xs">
+              <Info className="h-4 w-4 text-primary shrink-0" />
+              <span>
+                Exibindo resultados aproximados para a variação{" "}
+                <strong className="text-primary">&ldquo;{variationUsed}&rdquo;</strong>.
+              </span>
+            </div>
+          )}
+
           <p className="text-xs font-bold text-muted-foreground px-1">
             {results.length} produto(s) encontrado(s) para &ldquo;{query}&rdquo;
           </p>
@@ -269,12 +328,28 @@ export function SearchPage() {
                 );
               })}
             </div>
+          ) : errorMessage ? (
+            /* DIFERENCIAÇÃO: SERVIÇO INDISPONÍVEL */
+            <div className="rounded-3xl border border-destructive/30 bg-destructive/10 p-8 text-center shadow-card space-y-3">
+              <AlertCircle className="mx-auto h-8 w-8 text-destructive" />
+              <p className="font-bold text-base text-foreground">Serviço Indisponível</p>
+              <p className="text-xs text-muted-foreground max-w-xs mx-auto">
+                {errorMessage}
+              </p>
+              <button
+                type="button"
+                onClick={() => runSearch(query)}
+                className="inline-flex items-center gap-2 rounded-full bg-primary px-5 py-2.5 text-xs font-bold text-primary-foreground shadow-soft hover:opacity-90 active:scale-95 transition cursor-pointer"
+              >
+                Tentar novamente
+              </button>
+            </div>
           ) : (
+            /* DIFERENCIAÇÃO: PRODUTO NÃO ENCONTRADO */
             <div className="rounded-3xl border border-border bg-card p-8 text-center shadow-card space-y-3">
               <p className="font-bold text-base text-foreground">Nenhum produto encontrado</p>
               <p className="text-xs text-muted-foreground max-w-xs mx-auto">
-                Não localizamos este produto na base de dados. Deseja pesquisar na web e gerar a
-                ficha completa com IA?
+                Não localizamos este produto na base aberta, mesmo testando variações sem acento e com/sem marca.
               </p>
               {query && (
                 <Link
@@ -282,7 +357,7 @@ export function SearchPage() {
                   search={{ nome: query }}
                   className="inline-flex items-center gap-2 rounded-full bg-primary px-5 py-2.5 text-xs font-bold text-primary-foreground shadow-soft hover:opacity-90 active:scale-95 transition"
                 >
-                  <Sparkles className="h-4 w-4" /> Gerar ficha com IA
+                  <Sparkles className="h-4 w-4" /> Consultar ficha informativa com IA
                 </Link>
               )}
             </div>

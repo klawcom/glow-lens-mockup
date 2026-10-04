@@ -11,6 +11,7 @@ import {
   Plus,
   AlertCircle,
   Heart,
+  Info,
 } from "lucide-react";
 import { useState } from "react";
 import { getFicha } from "@/lib/identify.functions";
@@ -113,37 +114,74 @@ function FichaPage() {
           aria-live="polite"
         >
           <Loader2 className="h-8 w-8 animate-spin text-primary" />
-          <p className="font-semibold">Montando a ficha de “{nome}”...</p>
+          <p className="font-semibold">Buscando informações de “{nome}”...</p>
           <p className="text-sm text-muted-foreground">
-            A IA está pesquisando fontes na web. Pode levar até 1 minuto.
+            Consultando fontes abertas e inteligência artificial na web.
           </p>
         </div>
       </div>
     );
 
   const res = q.data;
-  if (!nome || q.isError || !res || res.status === "error")
+
+  // SERVIÇO INDISPONÍVEL
+  if (res?.status === "unavailable") {
     return (
       <div className="space-y-4 pt-2">
         {back}
-        <div className={`${box} space-y-3 text-center`}>
-          <AlertCircle className="mx-auto h-8 w-8 text-primary" />
-          <p className="font-semibold">
-            {res?.status === "error"
-              ? res.message
-              : nome
-                ? "Sem conexão. Tente de novo."
-                : "Nenhum produto informado."}
+        <div className={`${box} space-y-3.5 text-center border border-destructive/30 bg-destructive/10 p-6`}>
+          <AlertCircle className="mx-auto h-8 w-8 text-destructive" />
+          <h3 className="font-bold text-base text-foreground">Serviço Indisponível</h3>
+          <p className="text-xs text-muted-foreground max-w-sm mx-auto leading-relaxed">
+            {res.message}
           </p>
-          <Link
-            to="/buscar"
-            className="inline-block rounded-full bg-primary px-5 py-3 font-semibold text-primary-foreground"
-          >
-            Buscar produto
-          </Link>
+          <div className="pt-2 flex flex-col sm:flex-row items-center justify-center gap-2">
+            <button
+              type="button"
+              onClick={() => q.refetch()}
+              className="w-full sm:w-auto inline-flex items-center justify-center rounded-full bg-primary px-5 py-2.5 text-xs font-bold text-primary-foreground shadow-soft hover:opacity-95"
+            >
+              Tentar novamente
+            </button>
+            <Link
+              to="/buscar"
+              className="w-full sm:w-auto inline-flex items-center justify-center rounded-full border border-border bg-card px-5 py-2.5 text-xs font-bold text-foreground hover:bg-muted"
+            >
+              Buscar outro produto
+            </Link>
+          </div>
         </div>
       </div>
     );
+  }
+
+  // PRODUTO NÃO ENCONTRADO
+  if (!nome || q.isError || !res || res.status === "error" || res.status === "not_found") {
+    return (
+      <div className="space-y-4 pt-2">
+        {back}
+        <div className={`${box} space-y-3.5 text-center p-6`}>
+          <AlertCircle className="mx-auto h-8 w-8 text-primary" />
+          <h3 className="font-bold text-base text-foreground">Produto não localizado</h3>
+          <p className="text-xs text-muted-foreground max-w-sm mx-auto leading-relaxed">
+            {res?.status === "error" || res?.status === "not_found"
+              ? res.message
+              : nome
+                ? "Não foi possível carregar as informações. Tente novamente."
+                : "Nenhum produto informado."}
+          </p>
+          <div className="pt-2">
+            <Link
+              to="/buscar"
+              className="inline-block rounded-full bg-primary px-6 py-3 text-xs font-bold text-primary-foreground shadow-soft hover:opacity-90"
+            >
+              Buscar com outro termo
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   const f = res.ficha;
 
@@ -160,6 +198,14 @@ function FichaPage() {
   return (
     <div className="space-y-4 pt-2 pb-24">
       {back}
+
+      {/* AVISO DE RESULTADO PARCIAL / PLANO B */}
+      {(f.notice || f.isPartial || res.notice) && (
+        <div className="rounded-2xl bg-secondary/80 border border-border p-3.5 text-xs flex items-center gap-2.5 text-foreground shadow-xs">
+          <Info className="h-4 w-4 text-primary shrink-0" />
+          <span>{f.notice || res.notice || "Ficha montada a partir de consulta pública aproximada."}</span>
+        </div>
+      )}
       <img
         src={f.foto || categoryImage(f.categoria)}
         alt={f.nome}

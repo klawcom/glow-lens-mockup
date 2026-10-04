@@ -7,7 +7,8 @@ import type { Ficha } from "./ficha.server";
 
 export type IdentifyResult =
   | { status: "ok"; ai: AiIdentification; off: OffProduct | null }
-  | { status: "retake"; ai?: AiIdentification }
+  | { status: "retake"; ai?: AiIdentification; message?: string }
+  | { status: "unavailable"; message: string }
   | { status: "error"; message: string };
 
 const userKey = (deviceId: string) => {
@@ -36,15 +37,33 @@ export const identifyProduct = createServerFn({ method: "POST" })
       let ai: AiIdentification;
       try {
         ai = await identifyWithAi(data.image);
-      } catch (e) {
+      } catch (e: any) {
         console.error("Erro na identificação com IA:", e);
+        const rawMsg = e?.message || "";
+        const isUnavailable =
+          rawMsg === "CONFIG_MISSING" ||
+          rawMsg === "CONFIG" ||
+          e?.status === 503 ||
+          e?.status === 402 ||
+          e?.status === 403;
+
+        if (isUnavailable) {
+          return { status: "unavailable", message: friendlyAiMessage(e) };
+        }
         return { status: "error", message: friendlyAiMessage(e) };
       }
 
-      if (!ai.photoOk || ai.confidence === "baixo" || !ai.name) return { status: "retake", ai };
+      if (!ai.photoOk || ai.confidence === "baixo" || !ai.name) {
+        return {
+          status: "retake",
+          ai,
+          message:
+            "A foto ficou escura, cortada ou sem o rótulo legível. Aproxime mais a câmera e tente novamente.",
+        };
+      }
       const off = await searchOpenBeautyFacts(`${ai.brand} ${ai.name}`.trim());
       return { status: "ok", ai, off };
-    } catch (e) {
+    } catch (e: any) {
       console.error("Erro geral ao identificar produto:", e);
       const { friendlyAiMessage } = await import("./ai.server");
       return { status: "error", message: friendlyAiMessage(e) };
@@ -52,7 +71,10 @@ export const identifyProduct = createServerFn({ method: "POST" })
   });
 
 export type FichaResult =
-  { status: "ok"; ficha: Ficha; cache: boolean } | { status: "error"; message: string };
+  | { status: "ok"; ficha: Ficha; cache: boolean; isPartial?: boolean; notice?: string }
+  | { status: "unavailable"; message: string }
+  | { status: "not_found"; message: string }
+  | { status: "error"; message: string };
 
 export const getFicha = createServerFn({ method: "POST" })
   .inputValidator((d) =>
@@ -69,7 +91,15 @@ export const getFicha = createServerFn({ method: "POST" })
     // 1. Tentar ler do cache de 7 dias do banco
     try {
       const cached = await readCachedFicha(data.nome);
-      if (cached) return { status: "ok", ficha: cached, cache: true };
+      if (cached) {
+        return {
+          status: "ok",
+          ficha: cached,
+          cache: true,
+          isPartial: cached.isPartial,
+          notice: cached.notice,
+        };
+      }
     } catch (cacheErr) {
       console.warn("Aviso ao ler cache de fichas:", cacheErr);
     }
@@ -87,18 +117,42 @@ export const getFicha = createServerFn({ method: "POST" })
       return { status: "error", message: q.message };
     }
 
-    // 4. Buscar e construir ficha com IA
+    // 4. Buscar e construir ficha (tenta IA; se falhar, aciona Plano B no Open Beauty Facts ou mock)
     try {
       const ficha = await buildFicha(data.nome);
       await saveFicha(data.nome, ficha);
-      return { status: "ok", ficha, cache: false };
-    } catch (e) {
-      console.error("Falha ao gerar ficha com IA:", e);
-      // Fallback para produto de exemplo caso a chamada à IA falhe
+      return {
+        status: "ok",
+        ficha,
+        cache: false,
+        isPartial: ficha.isPartial,
+        notice: ficha.notice,
+      };
+    } catch (e: any) {
+      console.error("Falha ao gerar ficha após tentar todos os planos B:", e);
       if (exampleFallback) {
         return { status: "ok", ficha: exampleFallback, cache: true };
       }
-      return { status: "error", message: friendlyAiMessage(e) };
+
+      const rawMsg = e?.message || "";
+      const isUnavailable =
+        rawMsg === "CONFIG_MISSING" ||
+        rawMsg === "CONFIG" ||
+        e?.status === 503 ||
+        e?.status === 402 ||
+        e?.status === 403;
+
+      if (isUnavailable) {
+        return {
+          status: "unavailable",
+          message: friendlyAiMessage(e),
+        };
+      }
+
+      return {
+        status: "not_found",
+        message: `Não localizamos informações sobre "${data.nome}" nas fontes consultadas. Tente buscar por marca ou termo mais geral.`,
+      };
     }
   });
 
@@ -158,7 +212,8 @@ export const refreshTrendingNow = createServerFn({ method: "POST" })
 
 export type BarcodeResult =
   | { status: "ok"; name: string; brand?: string; foto?: string | null }
-  | { status: "not_found" }
+  | { status: "not_found"; message?: string }
+  | { status: "unavailable"; message: string }
   | { status: "error"; message: string };
 
 export const resolveBarcode = createServerFn({ method: "POST" })
@@ -228,15 +283,40 @@ Se não encontrar um produto real correspondente, retorne {"encontrado": false}.
         const fullName = `${brand} ${parsed.nome}`.trim();
         return { status: "ok", name: fullName, brand };
       }
-      return { status: "not_found" };
-    } catch (err) {
-      console.error("Erro na busca de código de barras com IA:", err);
-      return { status: "not_found" };
+      return {
+        status: "not_found",
+        message: `Não encontramos esse produto com o código de barras ${cleanCode}.`,
+      };
+    } catch (err: any) {
+      console.warn("Falha na busca de código de barras com IA:", err);
+      const rawMsg = err?.message || "";
+      const isUnavailable =
+        rawMsg === "CONFIG_MISSING" ||
+        rawMsg === "CONFIG" ||
+        err?.status === 503 ||
+        err?.status === 402 ||
+        err?.status === 403;
+
+      if (isUnavailable) {
+        const { friendlyAiMessage } = await import("./ai.server");
+        return {
+          status: "unavailable",
+          message:
+            "O código não consta na base aberta e o serviço de IA com busca na web está indisponível na plataforma.",
+        };
+      }
+      return {
+        status: "not_found",
+        message: `Não encontramos esse produto com o código de barras ${cleanCode}.`,
+      };
     }
   });
 
 export type UrlProductResult =
-  { status: "ok"; name: string } | { status: "not_found" } | { status: "error"; message: string };
+  | { status: "ok"; name: string }
+  | { status: "not_found"; message?: string }
+  | { status: "unavailable"; message: string }
+  | { status: "error"; message: string };
 
 function isPrivateIpOrHost(hostname: string): boolean {
   const host = hostname.toLowerCase().trim();
@@ -354,7 +434,7 @@ export const resolveProductFromUrl = createServerFn({ method: "POST" })
     const combinedSnippet = `${title} - ${description}`.trim();
 
     if (!combinedSnippet) {
-      return { status: "not_found" };
+      return { status: "not_found", message: "A página não contém título nem descrição identificáveis." };
     }
 
     // 5. Utiliza IA para identificar o produto a partir dos metadados
@@ -401,12 +481,69 @@ Se não for um produto de beleza, retorne {"encontrado": false}.`,
         return { status: "ok", name: cleanFallback };
       }
 
-      return { status: "not_found" };
-    } catch {
+      return { status: "not_found", message: "Não identificamos um produto de beleza na página deste link." };
+    } catch (err: any) {
       const cleanFallback = title.split(/[|\-–—]/)[0].trim();
       if (cleanFallback.length >= 4) {
         return { status: "ok", name: cleanFallback };
       }
-      return { status: "not_found" };
+
+      const rawMsg = err?.message || "";
+      const isUnavailable =
+        rawMsg === "CONFIG_MISSING" ||
+        rawMsg === "CONFIG" ||
+        err?.status === 503 ||
+        err?.status === 402 ||
+        err?.status === 403;
+
+      if (isUnavailable) {
+        return {
+          status: "unavailable",
+          message: "Serviço de IA indisponível para extrair o produto da página do link.",
+        };
+      }
+      return { status: "not_found", message: "Não identificamos um produto de beleza na página deste link." };
+    }
+  });
+
+export type SearchQueryResult = {
+  status: "ok" | "unavailable" | "error";
+  products: OffProduct[];
+  isPartial: boolean;
+  variationUsed: string;
+  totalFound: number;
+  message?: string;
+};
+
+// Server function para busca por texto usando Open Beauty Facts com até 3 variações da consulta
+export const searchProductsQuery = createServerFn({ method: "POST" })
+  .inputValidator((d) =>
+    z
+      .object({
+        query: z.string().trim().min(1).max(120),
+      })
+      .parse(d),
+  )
+  .handler(async ({ data }): Promise<SearchQueryResult> => {
+    try {
+      const { searchOpenBeautyFactsMulti } = await import("./identify.server");
+      const res = await searchOpenBeautyFactsMulti(data.query, 16);
+      return {
+        status: "ok",
+        products: res.products,
+        isPartial: res.isPartial,
+        variationUsed: res.variationUsed,
+        totalFound: res.products.length,
+      };
+    } catch (err: any) {
+      console.error("Erro na busca de produtos por texto:", err);
+      return {
+        status: "error",
+        products: [],
+        isPartial: false,
+        variationUsed: data.query,
+        totalFound: 0,
+        message: "Não foi possível concluir a busca neste momento. Tente novamente em instantes.",
+      };
     }
   });

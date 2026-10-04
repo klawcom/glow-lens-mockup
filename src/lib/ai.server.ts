@@ -24,34 +24,52 @@ export async function runAi(opts: {
   webSearch?: boolean;
   effort?: "low" | "medium";
 }) {
-  const apiKey = process.env["LOVABLE_API_KEY"];
-  if (!apiKey) throw new AiError(500, "CONFIG");
+  const apiKey =
+    process.env["LOVABLE_API_KEY"] ||
+    process.env["AI_GATEWAY_TOKEN"] ||
+    process.env["OPENAI_API_KEY"];
+
+  if (!apiKey) {
+    throw new AiError(503, "CONFIG_MISSING");
+  }
+
+  const isDirectOpenAi = apiKey.startsWith("sk-") && !process.env["LOVABLE_API_KEY"];
   const provider = createOpenAI({
-    baseURL: "https://ai.gateway.lovable.dev/v1",
+    baseURL: isDirectOpenAi ? "https://api.openai.com/v1" : "https://ai.gateway.lovable.dev/v1",
     apiKey,
-    headers: { "Lovable-API-Key": apiKey, "X-Lovable-AIG-SDK": "vercel-ai-sdk" },
+    headers: isDirectOpenAi
+      ? {}
+      : { "Lovable-API-Key": apiKey, "X-Lovable-AIG-SDK": "vercel-ai-sdk" },
   });
+
+  const modelName = isDirectOpenAi ? "gpt-4o-mini" : "openai/gpt-6-astra";
+
   const result = streamText({
-    model: provider.responses("openai/gpt-6-astra"),
+    model: provider.responses(modelName),
     maxRetries: 0,
     messages: opts.messages,
-    ...(opts.webSearch ? { tools: { web_search: provider.tools.webSearch({}) } } : {}),
-    providerOptions: {
-      openai: {
-        forceReasoning: true,
-        reasoningEffort: opts.effort ?? "low",
-        reasoningSummary: "auto",
-        store: false,
-        include: ["reasoning.encrypted_content"],
-      },
-    },
+    ...(opts.webSearch && !isDirectOpenAi
+      ? { tools: { web_search: provider.tools.webSearch({}) } }
+      : {}),
+    providerOptions: isDirectOpenAi
+      ? undefined
+      : {
+          openai: {
+            forceReasoning: true,
+            reasoningEffort: opts.effort ?? "low",
+            reasoningSummary: "auto",
+            store: false,
+            include: ["reasoning.encrypted_content"],
+          },
+        },
   });
+
   try {
     return await result.text;
   } catch (e) {
     const status = (e as { statusCode?: number }).statusCode ?? 500;
-    console.error(e);
-    throw new AiError(status, "AI_FAILED");
+    console.error("Erro na chamada de IA:", e);
+    throw new AiError(status, (e as Error)?.message || "AI_FAILED");
   }
 }
 
@@ -79,7 +97,16 @@ export function cleanFontes(v: unknown): Fonte[] {
 
 export function friendlyAiMessage(e: unknown): string {
   const s = e instanceof AiError ? e.status : ((e as { statusCode?: number })?.statusCode ?? 500);
-  if (s === 429) return "Muitas pessoas usando agora. Tente em alguns instantes.";
-  if (s === 402 || s === 403) return "A IA está indisponível no momento. Tente mais tarde.";
-  return "Não conseguimos concluir a consulta agora. Tente novamente em instantes.";
+  const rawMsg = (e as { message?: string })?.message || "";
+
+  if (rawMsg === "CONFIG" || rawMsg === "CONFIG_MISSING" || s === 503) {
+    return "Serviço de inteligência artificial não configurado na Lovable (chave de API ausente nos segredos).";
+  }
+  if (s === 429) {
+    return "Limite temporário de consultas da IA atingido. Tente novamente em alguns instantes.";
+  }
+  if (s === 402 || s === 403) {
+    return "O serviço de IA está sem créditos ou com acesso restrito no painel da Lovable.";
+  }
+  return "Serviço de IA temporariamente indisponível. Tentando plano alternativo com dados da base pública.";
 }
